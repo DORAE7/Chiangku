@@ -63,15 +63,17 @@
 
     <script>
         // --- 1. Firebase 初始化 (請務必替換為你的 Config) ---
-        const firebaseConfig = {
-            apiKey: "你的API_KEY",
-            authDomain: "你的專案ID.firebaseapp.com",
-            databaseURL: "你的資料庫URL",
-            projectId: "你的專案ID",
-            storageBucket: "你的專案ID.appspot.com",
-            messagingSenderId: "你的SENDER_ID",
-            appId: "你的APP_ID"
-        };
+        // --- 1. 初始化 (請在此填入你的 Firebase Config) ---
+const firebaseConfig = {
+  apiKey: "AIzaSyC56QsHKnTuwHFNAwQ2hywBuUviu12wtb4",
+  authDomain: "chiangku-240a5.firebaseapp.com",
+  databaseURL: "https://chiangku-240a5-default-rtdb.firebaseio.com",
+  projectId: "chiangku-240a5",
+  storageBucket: "chiangku-240a5.firebasestorage.app",
+  messagingSenderId: "96178563604",
+  appId: "1:96178563604:web:7d44030277f9b665219501",
+  measurementId: "G-1M37BGXY44"
+};
 
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -259,3 +261,4 @@
     </script>
 </body>
 </html>
+
