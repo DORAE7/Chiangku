@@ -3,75 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 Pro</title>
+    <title>Pikmin 蘑菇組隊站 Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-        .mush-card { animation: cardSlideIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
-        @keyframes cardSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .toast-active { transform: translateY(100px); opacity: 1; }
+        body { font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+        .mush-card { animation: cardFade 0.3s ease-out; }
+        @keyframes cardFade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="bg-slate-50 text-slate-900">
 
-    <div id="toast" class="fixed -top-20 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-2xl transition-all duration-500 opacity-0 flex items-center gap-2 font-bold text-sm">
-        <span id="toast-icon">✨</span> <span id="toast-msg">操作成功</span>
+    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-2xl transition-all duration-300 opacity-0 pointer-events-none text-sm font-bold">
+        <span id="toast-msg">提示訊息</span>
     </div>
 
-    <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-2xl relative">
-        <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b p-4 flex justify-between items-center">
-            <h1 class="text-2xl font-black text-emerald-600 tracking-tighter">🍄 蘑菇組隊</h1>
-            <div id="user-display" class="hidden flex items-center gap-3">
-                <img id="u-pic" src="" class="w-8 h-8 rounded-full border-2 border-emerald-100 shadow-sm">
-                <button onclick="auth.signOut()" class="text-[10px] bg-slate-100 px-3 py-1.5 rounded-xl text-slate-500 font-bold active:bg-slate-200 transition">登出</button>
+    <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-2xl">
+        <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b p-4 flex justify-between items-center">
+            <h1 class="text-xl font-black text-emerald-600">🍄 蘑菇組隊站</h1>
+            <div id="user-display" class="hidden flex items-center gap-2">
+                <img id="u-pic" src="" class="w-8 h-8 rounded-full border">
+                <button onclick="auth.signOut()" class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-400">登出</button>
             </div>
-            <button id="login-btn" onclick="login()" class="bg-emerald-500 text-white px-6 py-2 rounded-full font-black shadow-lg shadow-emerald-100 hover:scale-105 active:scale-95 transition-all">登入</button>
+            <button id="login-btn" onclick="login()" class="bg-emerald-500 text-white px-5 py-1.5 rounded-full font-bold text-sm">登入</button>
         </header>
 
-        <main class="p-4 space-y-8 flex-grow">
-            <section id="post-box" class="hidden bg-emerald-50 rounded-[32px] p-6 border border-emerald-100 shadow-inner space-y-4">
-                <h2 class="font-black text-emerald-800 text-sm flex items-center gap-2">📢 發起新徵求</h2>
-                <div class="grid grid-cols-2 gap-3">
-                    <select id="m-type" class="bg-white border-none rounded-2xl p-4 text-sm font-bold shadow-sm focus:ring-2 focus:ring-emerald-500 appearance-none">
+        <main class="p-4 space-y-6">
+            <section id="post-box" class="hidden bg-emerald-50 rounded-3xl p-5 border border-emerald-100 space-y-4">
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="m-type" class="bg-white rounded-xl p-3 text-sm shadow-sm border-none">
                         <option value="🔴 一般蘑菇">🔴 一般蘑菇</option>
                         <option value="🔥 巨大蘑菇">🔥 巨大蘑菇</option>
-                        <option value="✨ 特殊/元素">✨ 特殊/元素</option>
+                        <option value="✨ 特殊蘑菇">✨ 特殊蘑菇</option>
                     </select>
-                    <select id="m-max" class="bg-white border-none rounded-2xl p-4 text-sm font-bold shadow-sm focus:ring-2 focus:ring-emerald-500 appearance-none">
+                    <select id="m-max" class="bg-white rounded-xl p-3 text-sm shadow-sm border-none">
                         <option value="4">缺 4 人</option>
                         <option value="3">缺 3 人</option>
                         <option value="2">缺 2 人</option>
                         <option value="1">缺 1 人</option>
                     </select>
                 </div>
-                <input id="m-code" type="tel" maxlength="12" placeholder="好友代碼 (12位數字)" 
-                       class="w-full bg-white border-none rounded-2xl p-4 text-center font-mono text-lg tracking-[0.2em] shadow-sm focus:ring-2 focus:ring-emerald-500 placeholder:tracking-normal placeholder:font-sans placeholder:text-sm">
-                <button type="button" onclick="createPost()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-95">
-                    發布看板
-                </button>
+                <input id="m-code" type="tel" maxlength="12" placeholder="好友代碼 (12位)" class="w-full bg-white rounded-xl p-3 text-center font-mono tracking-widest shadow-sm border-none">
+                <button type="button" onclick="createPost()" class="w-full bg-emerald-500 text-white font-black py-3 rounded-xl shadow-lg active:scale-95 transition-all">發布看板</button>
             </section>
 
-            <section class="space-y-5">
-                <div class="flex justify-between items-end px-2">
-                    <h2 class="font-black text-slate-800 text-xl flex items-center gap-2">即時看板 <span class="block w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span></h2>
-                    <span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-lg">2小時內資訊</span>
-                </div>
-                
-                <div id="list" class="flex flex-col gap-5 w-full min-h-[400px]">
-                    <div class="text-center py-20 text-slate-300 font-bold">請先登入以同步資料...</div>
-                </div>
+            <section class="flex flex-col gap-4">
+                <h2 class="font-black text-slate-700 px-1 italic">LIVE 看板</h2>
+                <div id="list" class="flex flex-col gap-4 min-h-[300px]">
+                    </div>
             </section>
         </main>
-
-        <footer class="p-8 text-center text-[10px] text-slate-300 font-bold">
-            Pikmin Mushroom Squad Formation Board
-        </footer>
     </div>
 
     <script>
+        // --- 1. Firebase 設定 ---
         // --- 1. 初始化 (請在此填入你的 Firebase Config) ---
 const firebaseConfig = {
   apiKey: "AIzaSyC56QsHKnTuwHFNAwQ2hywBuUviu12wtb4",
@@ -88,194 +75,161 @@ const firebaseConfig = {
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // --- 2. 登入邏輯 ---
-        function login() { 
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).then(() => showToast("👋 歡迎登入！", "✅"));
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.replace('opacity-0', 'opacity-100');
+            setTimeout(() => t.classList.replace('opacity-100', 'opacity-0'), 2500);
         }
 
-        auth.onAuthStateChanged(user => {
-            const loginBtn = document.getElementById('login-btn');
-            const userDisp = document.getElementById('user-display');
-            const postBox = document.getElementById('post-box');
+        function login() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
 
+        auth.onAuthStateChanged(user => {
             if (user) {
-                loginBtn.classList.add('hidden');
-                userDisp.classList.remove('hidden');
-                postBox.classList.remove('hidden');
+                document.getElementById('login-btn').classList.add('hidden');
+                document.getElementById('user-display').classList.remove('hidden');
+                document.getElementById('post-box').classList.remove('hidden');
                 document.getElementById('u-pic').src = user.photoURL;
-                db.ref(`users/${user.uid}/code`).once('value', s => { 
-                    if(s.val()) document.getElementById('m-code').value = s.val(); 
-                });
+                db.ref(`users/${user.uid}/code`).once('value', s => { if(s.val()) document.getElementById('m-code').value = s.val(); });
                 loadData();
             } else {
-                loginBtn.classList.remove('hidden');
-                userDisp.classList.add('hidden');
-                postBox.classList.add('hidden');
-                document.getElementById('list').innerHTML = `<div class="text-center py-32 text-slate-200 text-sm font-bold">請先登入以開啟雷達</div>`;
+                document.getElementById('login-btn').classList.remove('hidden');
+                document.getElementById('user-display').classList.add('hidden');
+                document.getElementById('post-box').classList.add('hidden');
+                document.getElementById('list').innerHTML = `<p class="text-center py-20 text-slate-300 font-bold">請先登入</p>`;
             }
         });
 
-        // --- 3. 功能函式 ---
-        function showToast(msg, icon = "✨") {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-msg').innerText = msg;
-            document.getElementById('toast-icon').innerText = icon;
-            t.classList.add('toast-active', 'opacity-100');
-            setTimeout(() => t.classList.remove('toast-active', 'opacity-100'), 3000);
-        }
-
         async function createPost() {
             const user = auth.currentUser;
-            const type = document.getElementById('m-type').value;
-            const max = parseInt(document.getElementById('m-max').value);
             const code = document.getElementById('m-code').value.replace(/\D/g, '');
-
-            if (code.length < 12) return showToast("代碼長度不足", "⚠️");
+            if (code.length < 12) return showToast("❌ 代碼不足12位");
 
             const postKey = db.ref('posts').push().key;
-            const updates = {};
-            updates[`/posts/${postKey}`] = { uid: user.uid, name: user.displayName, type, max, current: 0, time: Date.now() };
-            updates[`/private_data/${postKey}`] = { code };
-            updates[`/users/${user.uid}/code`] = code;
+            const data = {
+                uid: user.uid,
+                name: user.displayName,
+                type: document.getElementById('m-type').value,
+                max: parseInt(document.getElementById('m-max').value),
+                current: 0,
+                time: Date.now()
+            };
 
-            await db.ref().update(updates);
-            showToast("成功發布徵求！", "🚀");
-        }
-
-        async function deletePost(pid) {
-            if(!confirm("確定要撤回嗎？")) return;
             const up = {};
-            up[`/posts/${pid}`] = null;
-            up[`/private_data/${pid}`] = null;
-            up[`/applications/${pid}`] = null;
+            up[`/posts/${postKey}`] = data;
+            up[`/private_data/${postKey}`] = { code };
+            up[`/users/${user.uid}/code`] = code;
+
             await db.ref().update(up);
-            showToast("已撤回貼文", "🗑️");
+            showToast("✅ 發布成功");
         }
 
-        async function updateMax(pid, val) {
-            await db.ref(`posts/${pid}`).update({ max: parseInt(val) });
-            showToast("人數上限已更新", "📝");
+        async function deletePost(id) {
+            if(!confirm("撤回貼文？")) return;
+            await db.ref().update({ [`/posts/${id}`]: null, [`/private_data/${id}`]: null, [`/applications/${id}`]: null });
+            showToast("🗑️ 已撤回");
         }
 
-        // --- 4. 數據渲染 (徹底解決重疊與排序) ---
+        async function updateMax(id, val) {
+            await db.ref(`posts/${id}`).update({ max: parseInt(val) });
+        }
+
+        // --- 核心修正：移除 startAt 過濾，確保資料一定抓得到 ---
         function loadData() {
             const me = auth.currentUser.uid;
-            const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
-
-            db.ref('posts').orderByChild('time').startAt(twoHoursAgo).on('value', snapshot => {
+            // 直接監聽整個 posts 分區
+            db.ref('posts').on('value', snapshot => {
                 const listDiv = document.getElementById('list');
                 listDiv.innerHTML = "";
                 
                 let posts = [];
-                snapshot.forEach(s => posts.push({ id: s.key, ...s.val() }));
+                snapshot.forEach(s => {
+                    const p = s.val();
+                    // 在前端過濾掉 2 小時前的資料，避免資料庫查詢失敗
+                    if (p.time > Date.now() - (2 * 60 * 60 * 1000)) {
+                        posts.push({ id: s.key, ...p });
+                    }
+                });
                 
-                // 強制由新到舊排序
                 posts.sort((a, b) => b.time - a.time);
 
                 if (posts.length === 0) {
-                    listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">目前看板空空的...</div>`;
+                    listDiv.innerHTML = `<p class="text-center py-20 text-slate-300">目前無徵求</p>`;
                     return;
                 }
 
                 posts.forEach(post => {
                     const card = document.createElement('div');
-                    card.className = "w-full bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex flex-col gap-4 mush-card relative overflow-hidden";
-                    
-                    const isMyPost = post.uid === me;
-                    const isFull = post.current >= post.max;
-
+                    card.className = "w-full bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3 mush-card";
+                    const isMy = post.uid === me;
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
-                            <div class="flex flex-col gap-1.5 text-left">
-                                <span class="w-fit bg-emerald-100 text-emerald-700 text-[10px] px-3 py-1 rounded-full font-black tracking-wider">${post.type}</span>
-                                <h3 class="font-black text-slate-800 text-lg">${post.name} ${isMyPost ? '<span class="text-emerald-500 text-xs">(我)</span>' : ''}</h3>
+                            <div class="flex flex-col gap-1 text-left">
+                                <span class="w-fit bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-black">${post.type}</span>
+                                <h3 class="font-bold text-slate-800">${post.name} ${isMy ? '<small class="text-emerald-500">(我)</small>' : ''}</h3>
                             </div>
-                            <div class="text-right flex flex-col items-end">
-                                <span class="text-3xl font-black ${isFull ? 'text-slate-200' : 'text-emerald-500'} leading-none">${post.current}/${post.max}</span>
-                                <div class="text-[9px] text-slate-300 font-bold mt-2 uppercase tracking-widest">${new Date(post.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                            <div class="text-right">
+                                <span class="text-2xl font-black ${post.current >= post.max ? 'text-slate-200' : 'text-emerald-500'}">${post.current}/${post.max}</span>
+                                <div class="text-[9px] text-slate-300 font-bold mt-1">${new Date(post.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
                             </div>
                         </div>
-                        <div id="ctrl-${post.id}" class="pt-4 border-t border-slate-50 flex flex-col gap-3"></div>
+                        <div id="ctrl-${post.id}" class="pt-3 border-t border-slate-50 flex flex-col gap-2"></div>
                     `;
                     listDiv.appendChild(card);
-
-                    if (isMyPost) renderHostUI(post); else renderGuestUI(post);
+                    if (isMy) renderHost(post); else renderGuest(post);
                 });
             });
         }
 
-        function renderHostUI(post) {
-            const div = document.getElementById(`ctrl-${post.id}`);
-            div.innerHTML = `
-                <div class="flex gap-2">
-                    <select onchange="updateMax('${post.id}', this.value)" class="flex-1 bg-slate-50 text-xs font-bold rounded-2xl p-3 border-none appearance-none">
-                        <option value="1" ${post.max==1?'selected':''}>上限改為 1人</option>
-                        <option value="2" ${post.max==2?'selected':''}>上限改為 2人</option>
-                        <option value="3" ${post.max==3?'selected':''}>上限改為 3人</option>
-                        <option value="4" ${post.max==4?'selected':''}>上限改為 4人</option>
-                    </select>
-                    <button onclick="deletePost('${post.id}')" class="bg-red-50 text-red-500 text-xs px-5 py-3 rounded-2xl font-black active:scale-95 transition">撤回</button>
-                </div>
-                <div id="apps-${post.id}" class="flex flex-col gap-2"></div>`;
+        function renderHost(p) {
+            const d = document.getElementById(`ctrl-${p.id}`);
+            d.innerHTML = `<div class="flex gap-2">
+                <select onchange="updateMax('${p.id}',this.value)" class="flex-1 bg-slate-50 text-[10px] rounded-xl p-2 border-none">
+                    <option value="1" ${p.max==1?'selected':''}>1人</option><option value="2" ${p.max==2?'selected':''}>2人</option>
+                    <option value="3" ${p.max==3?'selected':''}>3人</option><option value="4" ${p.max==4?'selected':''}>4人</option>
+                </select>
+                <button onclick="deletePost('${p.id}')" class="bg-red-50 text-red-500 text-[10px] px-4 py-2 rounded-xl font-bold">撤回</button>
+            </div><div id="apps-${p.id}" class="flex flex-col gap-1"></div>`;
             
-            db.ref(`applications/${post.id}`).on('value', s => {
-                const appBox = document.getElementById(`apps-${post.id}`);
-                if (!appBox) return;
-                appBox.innerHTML = "";
-                s.forEach(child => {
-                    const app = child.val();
-                    if (app.status === 'accepted') return;
-                    appBox.innerHTML += `
-                        <div class="flex justify-between items-center bg-blue-50/50 p-3 rounded-2xl border border-blue-100/30">
-                            <span class="text-xs font-black text-blue-600">${app.name} 申請加入</span>
-                            <button onclick="accept('${post.id}', '${child.key}', ${post.current}, ${post.max})" class="bg-blue-500 text-white text-[10px] px-4 py-1.5 rounded-xl font-bold shadow-md shadow-blue-100 active:scale-95 transition">接受</button>
-                        </div>`;
+            db.ref(`applications/${p.id}`).on('value', s => {
+                const box = document.getElementById(`apps-${p.id}`);
+                if(!box) return; box.innerHTML = "";
+                s.forEach(c => {
+                    const a = c.val(); if(a.status === 'accepted') return;
+                    box.innerHTML += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-500">${a.name} 申請</span>
+                        <button onclick="accept('${p.id}','${c.key}',${p.current},${p.max})" class="bg-blue-500 text-white text-[10px] px-3 py-1 rounded-lg">接受</button>
+                    </div>`;
                 });
             });
         }
 
-        function renderGuestUI(post) {
-            const div = document.getElementById(`ctrl-${post.id}`);
-            const me = auth.currentUser.uid;
-
-            db.ref(`applications/${post.id}/${me}`).on('value', s => {
-                const app = s.val();
-                if (!app) {
-                    div.innerHTML = post.current >= post.max 
-                        ? `<button disabled class="w-full bg-slate-50 text-slate-300 py-3 rounded-2xl text-xs font-bold italic">隊伍已滿員</button>`
-                        : `<button onclick="apply('${post.id}')" class="w-full bg-emerald-50 text-emerald-600 font-black py-4 rounded-2xl hover:bg-emerald-100 active:scale-95 transition-all text-sm">🙋‍♂️ 申請加入隊伍</button>`;
-                } else if (app.status === 'pending') {
-                    div.innerHTML = `<div class="w-full bg-orange-50 text-orange-400 py-4 rounded-2xl text-xs text-center font-bold animate-pulse">⏳ 等待房主核准中...</div>`;
-                } else if (app.status === 'accepted') {
-                    db.ref(`private_data/${post.id}/code`).once('value', sc => {
-                        div.innerHTML = `
-                            <div class="bg-emerald-500 p-4 rounded-[24px] text-white text-center shadow-xl shadow-emerald-200 cursor-pointer active:scale-95 transition-all" onclick="copy('${sc.val()}')">
-                                <p class="text-[9px] font-black opacity-80 mb-2 uppercase tracking-widest">已核准！點擊可複製代碼</p>
-                                <div class="text-2xl font-mono font-black tracking-[0.2em]">${sc.val()}</div>
-                            </div>`;
+        function renderGuest(p) {
+            const d = document.getElementById(`ctrl-${p.id}`);
+            db.ref(`applications/${p.id}/${auth.currentUser.uid}`).on('value', s => {
+                const a = s.val();
+                if (!a) {
+                    d.innerHTML = p.current >= p.max ? `<button disabled class="w-full text-slate-300 py-2 text-xs italic">已額滿</button>` :
+                                  `<button onclick="apply('${p.id}')" class="w-full bg-emerald-50 text-emerald-600 font-bold py-3 rounded-2xl text-sm">申請加入</button>`;
+                } else if (a.status === 'pending') {
+                    d.innerHTML = `<div class="w-full bg-orange-50 text-orange-400 py-3 rounded-2xl text-xs text-center animate-pulse">等待房主核准...</div>`;
+                } else if (a.status === 'accepted') {
+                    db.ref(`private_data/${p.id}/code`).once('value', sc => {
+                        d.innerHTML = `<div class="bg-emerald-500 p-3 rounded-2xl text-white text-center cursor-pointer active:scale-95 transition" onclick="copy('${sc.val()}')">
+                            <p class="text-[9px] font-black opacity-80 mb-1">已核准！點擊複製代碼</p>
+                            <div class="text-xl font-mono font-black tracking-widest">${sc.val()}</div>
+                        </div>`;
                     });
                 }
             });
         }
 
-        function apply(pid) { 
-            db.ref(`applications/${pid}/${auth.currentUser.uid}`).set({ name: auth.currentUser.displayName, status: 'pending' });
-            showToast("已送出申請！", "✉️");
-        }
-
+        function apply(pid) { db.ref(`applications/${pid}/${auth.currentUser.uid}`).set({ name: auth.currentUser.displayName, status: 'pending' }); }
         function accept(pid, uid, cur, max) {
-            if (cur >= max) return showToast("人數已滿", "⚠️");
-            const up = {};
-            up[`applications/${pid}/${uid}/status`] = 'accepted';
-            up[`posts/${pid}/current`] = cur + 1;
-            db.ref().update(up);
-            showToast("已接受打手！", "🤝");
+            if (cur >= max) return showToast("❌ 人數已滿");
+            db.ref().update({ [`applications/${pid}/${uid}/status`]: 'accepted', [`posts/${pid}/current`]: cur + 1 });
         }
-
-        function copy(t) { 
-            navigator.clipboard.writeText(t).then(() => showToast("代碼已複製！", "📋")); 
-        }
+        function copy(t) { navigator.clipboard.writeText(t).then(() => showToast("📋 代碼已複製")); }
     </script>
 </body>
 </html>
