@@ -3,64 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pikmin 蘑菇組隊站 Pro</title>
+    <title>Pikmin 蘑菇組隊站</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
-    <style>
-        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        .mush-shadow { box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.1), 0 8px 10px -6px rgba(16, 185, 129, 0.1); }
-    </style>
+    <style>body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }</style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="bg-gray-50 text-gray-800">
 
-    <div class="max-w-md mx-auto min-h-screen flex flex-col">
-        <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b p-4 flex justify-between items-center">
-            <h1 class="text-xl font-black text-emerald-600 tracking-tight">🍄 蘑菇組隊站</h1>
-            <div id="user-display" class="hidden flex items-center gap-2">
-                <img id="u-pic" src="" class="w-7 h-7 rounded-full border">
-                <button onclick="auth.signOut()" class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">登出</button>
-            </div>
-            <button id="login-btn" onclick="login()" class="text-sm bg-emerald-500 text-white px-4 py-1.5 rounded-full font-bold shadow-md">登入</button>
+    <div class="max-w-lg mx-auto min-h-screen bg-white shadow-xl relative pb-20">
+        <header class="bg-emerald-600 text-white p-4 sticky top-0 z-10 flex justify-between items-center shadow-md">
+            <h1 class="text-xl font-bold flex items-center gap-2">🍄 蘑菇組隊站</h1>
+            <button id="auth-btn" onclick="toggleAuth()" class="text-xs bg-emerald-700 px-3 py-1 rounded-full border border-emerald-500">登入</button>
         </header>
 
-        <main class="p-4 space-y-6 flex-grow">
+        <div id="login-view" class="p-8 text-center hidden">
+            <div class="text-6xl mb-4">👋</div>
+            <h2 class="text-xl font-bold mb-2">歡迎加入組隊</h2>
+            <p class="text-gray-500 mb-6">請先登入以開始徵求或加入隊伍</p>
+            <button onclick="login()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow-lg active:scale-95 transition">使用 Google 帳號登入</button>
+        </div>
+
+        <div id="main-view" class="hidden p-4 space-y-6">
             
-            <section id="post-box" class="hidden bg-white rounded-3xl p-5 mush-shadow border border-emerald-50 space-y-4">
-                <h2 class="font-black text-slate-700 flex items-center gap-2">發起徵求</h2>
-                <div class="grid grid-cols-2 gap-3">
-                    <select id="m-type" class="bg-slate-50 border-none rounded-2xl p-3 text-sm focus:ring-2 focus:ring-emerald-500">
-                        <option value="🔴 一般蘑菇">🔴 一般蘑菇</option>
-                        <option value="🔥 巨大蘑菇">🔥 巨大蘑菇</option>
-                        <option value="✨ 特殊/元素">✨ 特殊/元素</option>
+            <div id="profile-setup" class="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm hidden">
+                <p>👋 歡迎回來，<span id="display-name" class="font-bold"></span></p>
+            </div>
+
+            <div class="bg-white border-2 border-emerald-100 rounded-xl p-4 shadow-sm">
+                <h3 class="font-bold text-emerald-800 mb-3 flex items-center">📢 發起新的徵求</h3>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <select id="m-type" class="bg-gray-50 border rounded p-2 text-sm">
+                        <option value="一般蘑菇">🔴 一般蘑菇</option>
+                        <option value="巨大蘑菇">🔥 巨大蘑菇</option>
+                        <option value="特殊蘑菇">✨ 特殊/元素</option>
                     </select>
-                    <select id="m-max" class="bg-slate-50 border-none rounded-2xl p-3 text-sm focus:ring-2 focus:ring-emerald-500">
+                    <select id="m-max" class="bg-gray-50 border rounded p-2 text-sm">
                         <option value="4">缺 4 人</option>
                         <option value="3">缺 3 人</option>
                         <option value="2">缺 2 人</option>
                         <option value="1">缺 1 人</option>
                     </select>
                 </div>
-                <input id="m-code" type="tel" maxlength="12" placeholder="好友代碼 (12位數字)" 
-                       class="w-full bg-slate-50 border-none rounded-2xl p-3 text-center font-mono tracking-widest focus:ring-2 focus:ring-emerald-500">
-                <button type="button" onclick="createPost()" class="w-full bg-emerald-500 text-white font-black py-3 rounded-2xl shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all active:scale-95">
-                    發布徵求
-                </button>
-            </section>
+                <input id="m-code" type="tel" placeholder="輸入好友代碼 (12位數字)" class="w-full bg-gray-50 border rounded p-2 mb-3 text-center tracking-widest font-mono">
+                <button onclick="createPost()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 rounded-lg transition shadow">發布徵求 (自動記憶代碼)</button>
+            </div>
 
-            <section class="space-y-4 pb-20">
-                <div class="flex justify-between items-end">
-                    <h2 class="font-black text-slate-700 text-lg">即時看板</h2>
-                    <span class="text-[10px] text-slate-400">只顯示 2 小時內資訊</span>
+            <div>
+                <h3 class="font-bold text-gray-700 mb-3 border-l-4 border-orange-400 pl-2">🔥 即時隊伍列表</h3>
+                <div id="posts-container" class="space-y-4 pb-10">
+                    <p class="text-center text-gray-400 py-4">載入中...</p>
                 </div>
-                <div id="list" class="space-y-4 text-center text-slate-400 py-10">讀取中...</div>
-            </section>
-        </main>
+            </div>
+        </div>
+
     </div>
 
     <script>
-        // --- 1. Firebase Config (請填入你的資料) ---
+        // --- 1. 初始化 (請在此填入你的 Firebase Config) ---
 const firebaseConfig = {
   apiKey: "AIzaSyC56QsHKnTuwHFNAwQ2hywBuUviu12wtb4",
   authDomain: "chiangku-240a5.firebaseapp.com",
@@ -72,183 +73,184 @@ const firebaseConfig = {
   measurementId: "G-1M37BGXY44"
 };
 
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
+        let currentUser = null;
 
-        // --- 2. 登入狀態監控 ---
+        // --- 2. 登入與狀態監聽 ---
+        function login() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+        function toggleAuth() { if(currentUser) auth.signOut(); else login(); }
+
         auth.onAuthStateChanged(user => {
-            const loginBtn = document.getElementById('login-btn');
-            const userDisp = document.getElementById('user-display');
-            const postBox = document.getElementById('post-box');
-
+            currentUser = user;
             if (user) {
-                loginBtn.classList.add('hidden');
-                userDisp.classList.remove('hidden');
-                postBox.classList.remove('hidden');
-                document.getElementById('u-pic').src = user.photoURL;
-                // 自動帶入記憶
-                db.ref(`users/${user.uid}/code`).once('value', s => { if(s.val()) document.getElementById('m-code').value = s.val(); });
-                loadData();
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('main-view').classList.remove('hidden');
+                document.getElementById('auth-btn').innerText = "登出";
+                document.getElementById('display-name').innerText = user.displayName;
+                
+                // 自動讀取記憶代碼
+                db.ref(`users/${user.uid}/friendCode`).once('value', s => {
+                    if(s.exists()) document.getElementById('m-code').value = s.val();
+                });
+                
+                loadPosts(); // 啟動監聽
             } else {
-                loginBtn.classList.remove('hidden');
-                userDisp.classList.add('hidden');
-                postBox.classList.add('hidden');
-                document.getElementById('list').innerHTML = "請先登入以查看看板";
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('main-view').classList.add('hidden');
+                document.getElementById('auth-btn').innerText = "登入";
             }
         });
 
-        function login() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-
-        // --- 3. 發文與修改功能 ---
+        // --- 3. 發文功能 (含自動記憶) ---
         async function createPost() {
-            const user = auth.currentUser;
             const type = document.getElementById('m-type').value;
             const max = parseInt(document.getElementById('m-max').value);
-            const code = document.getElementById('m-code').value.replace(/\D/g, '');
+            const code = document.getElementById('m-code').value.replace(/\D/g, ''); // 只留數字
 
-            if (code.length < 12) return alert("代碼需為 12 位數字");
+            if (code.length < 12) return alert("好友代碼需為 12 位數字");
 
-            const postKey = db.ref('posts').push().key;
-            const now = Date.now();
+            const newPostKey = db.ref('posts').push().key;
 
+            // 同步寫入三處：公開貼文、私密代碼、個人記憶
             const updates = {};
-            updates[`/posts/${postKey}`] = { uid: user.uid, name: user.displayName, type, max, current: 0, time: now };
-            updates[`/private_data/${postKey}`] = { code };
-            updates[`/users/${user.uid}/code`] = code;
+            updates[`/posts/${newPostKey}`] = {
+                uid: currentUser.uid,
+                name: currentUser.displayName,
+                type: type,
+                max: max,
+                current: 0,
+                time: firebase.database.ServerValue.TIMESTAMP
+            };
+            updates[`/private_data/${newPostKey}`] = { friendCode: code };
+            updates[`/users/${currentUser.uid}/friendCode`] = code; // 記憶代碼
 
-            await db.ref().update(updates);
-            alert("發布成功！");
+            try {
+                await db.ref().update(updates);
+                alert("發布成功！等待玩家加入...");
+            } catch (e) {
+                alert("發布失敗：" + e.message);
+            }
         }
 
-        // --- 4. 刪除隊伍 ---
-        async function deletePost(postId) {
-            if (!confirm("確定要撤回這則徵求嗎？")) return;
-            const updates = {};
-            updates[`/posts/${postId}`] = null;
-            updates[`/private_data/${postId}`] = null;
-            updates[`/applications/${postId}`] = null;
-            await db.ref().update(updates);
-        }
+        // --- 4. 列表渲染與互動邏輯 ---
+        function loadPosts() {
+            // 只顯示最近 20 筆
+            db.ref('posts').limitToLast(20).on('value', snapshot => {
+                const container = document.getElementById('posts-container');
+                container.innerHTML = '';
+                
+                const posts = [];
+                snapshot.forEach(child => posts.push({key: child.key, ...child.val()}));
+                posts.reverse(); // 新的在上面
 
-        // --- 5. 修改人數上限 ---
-        async function updateMax(postId, newMax) {
-            await db.ref(`posts/${postId}`).update({ max: parseInt(newMax) });
-        }
-
-        // --- 6. 載入與渲染清單 ---
-        function loadData() {
-            const me = auth.currentUser.uid;
-            const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
-
-            db.ref('posts').orderByChild('time').startAt(twoHoursAgo).on('value', snapshot => {
-                const list = document.getElementById('list');
-                list.innerHTML = "";
-                const data = [];
-                snapshot.forEach(s => data.push({ id: s.key, ...s.val() }));
-                data.reverse();
-
-                if (data.length === 0) list.innerHTML = "目前沒有徵求，快來發一個吧！";
-
-                data.forEach(post => {
-                    const card = document.createElement('div');
-                    card.className = "bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4 text-left relative";
+                posts.forEach(post => {
+                    const isHost = post.uid === currentUser.uid;
+                    const timeStr = new Date(post.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     
-                    const isFull = post.current >= post.max;
-                    const isMyPost = post.uid === me;
-
-                    card.innerHTML = `
-                        <div class="flex justify-between items-start">
+                    let html = `
+                    <div class="bg-white border rounded-xl p-4 shadow-sm relative overflow-hidden">
+                        ${post.current >= post.max ? '<div class="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1">額滿</div>' : ''}
+                        
+                        <div class="flex justify-between items-start mb-2">
                             <div>
-                                <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded-lg font-bold">${post.type}</span>
-                                <h3 class="font-bold text-slate-800 mt-2">${post.name}${isMyPost ? ' (我)' : ''}</h3>
+                                <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded font-bold">${post.type}</span>
+                                <h4 class="font-bold text-lg mt-1">${post.name}</h4>
                             </div>
                             <div class="text-right">
-                                <span class="text-2xl font-black ${isFull ? 'text-red-400' : 'text-emerald-500'}">${post.current}/${post.max}</span>
-                                <div class="text-[9px] text-slate-300 italic">${new Date(post.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                                <div class="text-2xl font-bold text-emerald-500">${post.current}/${post.max}</div>
+                                <div class="text-xs text-gray-400">${timeStr}</div>
                             </div>
                         </div>
 
-                        <div id="ctrl-${post.id}" class="pt-3 border-t border-dashed"></div>
-                    `;
-                    list.appendChild(card);
+                        <div id="action-area-${post.key}" class="mt-3 pt-3 border-t border-gray-100">
+                            </div>
+                    </div>`;
 
-                    if (isMyPost) renderHostUI(post); else renderGuestUI(post);
+                    container.insertAdjacentHTML('beforeend', html);
+                    
+                    if (isHost) renderHostControls(post.key, post);
+                    else renderGuestControls(post.key, post);
                 });
             });
         }
 
-        // 房主管理介面
-        function renderHostUI(post) {
-            const div = document.getElementById(`ctrl-${post.id}`);
-            div.innerHTML = `
-                <div class="space-y-3">
-                    <div class="flex gap-2">
-                        <select onchange="updateMax('${post.id}', this.value)" class="flex-1 bg-slate-50 text-xs rounded-lg p-2 border-none">
-                            <option value="1" ${post.max==1?'selected':''}>改為缺 1 人</option>
-                            <option value="2" ${post.max==2?'selected':''}>改為缺 2 人</option>
-                            <option value="3" ${post.max==3?'selected':''}>改為缺 3 人</option>
-                            <option value="4" ${post.max==4?'selected':''}>改為缺 4 人</option>
-                        </select>
-                        <button onclick="deletePost('${post.id}')" class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-lg font-bold">撤回徵求</button>
-                    </div>
-                    <div id="apps-${post.id}" class="space-y-2"></div>
-                </div>
-            `;
-            // 監聽申請者
-            db.ref(`applications/${post.id}`).on('value', s => {
-                const appBox = document.getElementById(`apps-${post.id}`);
-                appBox.innerHTML = "";
-                s.forEach(child => {
-                    const app = child.val();
-                    if (app.status === 'accepted') return;
-                    appBox.innerHTML += `
-                        <div class="flex justify-between items-center bg-blue-50/50 p-2 rounded-xl border border-blue-100/50">
-                            <span class="text-xs font-bold text-blue-700">${app.name} 申請加入</span>
-                            <button onclick="accept('${post.id}', '${child.key}', ${post.current}, ${post.max})" class="bg-blue-500 text-white text-[10px] px-3 py-1 rounded-full shadow-sm">接受</button>
+        // --- A. 發文者視角：審核名單 ---
+        function renderHostControls(postId, post) {
+            const area = document.getElementById(`action-area-${postId}`);
+            area.innerHTML = `<p class="text-xs text-gray-400 mb-2">待審核名單：</p><div id="apps-${postId}" class="space-y-2"></div>`;
+            
+            db.ref(`applications/${postId}`).on('value', snap => {
+                const appDiv = document.getElementById(`apps-${postId}`);
+                appDiv.innerHTML = '';
+                if(!snap.exists()) appDiv.innerHTML = '<p class="text-xs text-gray-300">尚無人申請</p>';
+
+                snap.forEach(s => {
+                    const app = s.val();
+                    if(app.status === 'accepted') return; // 已接受的不顯示
+
+                    const btn = `<button onclick="acceptUser('${postId}', '${s.key}', ${post.current}, ${post.max})" class="bg-blue-500 text-white text-xs px-3 py-1 rounded">接受</button>`;
+                    appDiv.innerHTML += `<div class="flex justify-between items-center bg-gray-50 p-2 rounded text-sm"><span>${app.name}</span>${btn}</div>`;
+                });
+            });
+        }
+
+        // --- B. 申請者視角：申請 / 看代碼 ---
+        function renderGuestControls(postId, post) {
+            const area = document.getElementById(`action-area-${postId}`);
+            
+            db.ref(`applications/${postId}/${currentUser.uid}`).on('value', snap => {
+                const myApp = snap.val();
+                
+                if (!myApp) {
+                    // 尚未申請
+                    if (post.current >= post.max) {
+                        area.innerHTML = `<button disabled class="w-full bg-gray-100 text-gray-400 py-2 rounded">已額滿</button>`;
+                    } else {
+                        area.innerHTML = `<button onclick="applyJoin('${postId}')" class="w-full bg-emerald-100 text-emerald-700 font-bold py-2 rounded hover:bg-emerald-200">🙋‍♂️ 申請加入</button>`;
+                    }
+                } else if (myApp.status === 'pending') {
+                    // 等待中
+                    area.innerHTML = `<button disabled class="w-full bg-yellow-50 text-yellow-600 py-2 rounded border border-yellow-200">⏳ 等待房主審核中...</button>`;
+                } else if (myApp.status === 'accepted') {
+                    // 已核准 -> 抓現代碼
+                    db.ref(`private_data/${postId}/friendCode`).once('value', s => {
+                        const code = s.val();
+                        area.innerHTML = `
+                        <div class="bg-green-50 p-3 rounded border border-green-200 text-center">
+                            <p class="text-xs text-green-600 mb-1">已核准！請複製代碼：</p>
+                            <div class="text-xl font-mono font-bold text-gray-800 select-all" onclick="copy('${code}')">${code}</div>
+                            <p class="text-[10px] text-gray-400 mt-1">(點擊代碼複製)</p>
                         </div>`;
-                });
-            });
-        }
-
-        // 客人介面
-        function renderGuestUI(post) {
-            const div = document.getElementById(`ctrl-${post.id}`);
-            const me = auth.currentUser.uid;
-
-            db.ref(`applications/${post.id}/${me}`).on('value', s => {
-                const app = s.val();
-                if (!app) {
-                    div.innerHTML = post.current >= post.max 
-                        ? `<button disabled class="w-full bg-slate-50 text-slate-300 py-2 rounded-xl text-sm italic">隊伍已滿員</button>`
-                        : `<button onclick="apply('${post.id}')" class="w-full bg-emerald-50 text-emerald-600 font-bold py-2 rounded-xl hover:bg-emerald-100 transition">🙋‍♂️ 申請加入隊伍</button>`;
-                } else if (app.status === 'pending') {
-                    div.innerHTML = `<button disabled class="w-full bg-orange-50 text-orange-400 py-2 rounded-xl text-sm animate-pulse">⏳ 等待房主核准中...</button>`;
-                } else if (app.status === 'accepted') {
-                    db.ref(`private_data/${post.id}/code`).once('value', sc => {
-                        div.innerHTML = `
-                            <div class="bg-emerald-500 p-3 rounded-2xl text-white text-center shadow-lg shadow-emerald-100">
-                                <p class="text-[10px] opacity-80 mb-1">已核准！請複製好友代碼：</p>
-                                <div class="text-xl font-mono font-black tracking-widest cursor-pointer" onclick="copy('${sc.val()}')">${sc.val()}</div>
-                            </div>`;
                     });
                 }
             });
         }
 
-        // 互動功能
-        function apply(pid) { db.ref(`applications/${pid}/${auth.currentUser.uid}`).set({ name: auth.currentUser.displayName, status: 'pending' }); }
-        
-        function accept(pid, uid, cur, max) {
-            if (cur >= max) return alert("人數已滿");
-            const up = {};
-            up[`applications/${pid}/${uid}/status`] = 'accepted';
-            up[`posts/${pid}/current`] = cur + 1;
-            db.ref().update(up);
+        // --- 5. 互動功能函數 ---
+        function applyJoin(postId) {
+            db.ref(`applications/${postId}/${currentUser.uid}`).set({
+                name: currentUser.displayName,
+                status: 'pending',
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
         }
 
-        function copy(t) { navigator.clipboard.writeText(t).then(() => alert("代碼已複製！")); }
+        function acceptUser(postId, guestUid, current, max) {
+            if(current >= max) return alert("人數已滿");
+            
+            // 交易更新：同時更新申請狀態與目前人數
+            const updates = {};
+            updates[`applications/${postId}/${guestUid}/status`] = 'accepted';
+            updates[`posts/${postId}/current`] = current + 1;
+            
+            db.ref().update(updates);
+        }
+
+        function copy(text) {
+            navigator.clipboard.writeText(text).then(() => alert("代碼已複製！"));
+        }
     </script>
 </body>
 </html>
-
