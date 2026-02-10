@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 - 完美版</title>
+    <title>Pikmin 蘑菇組隊站 - 搶菇啦~</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -12,12 +12,40 @@
         body { font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
         .mush-card { animation: cardFade 0.4s ease-out; }
         @keyframes cardFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* 強制彈窗動畫 */
+        .modal-enter { animation: modalPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+        @keyframes modalPop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
 
     <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-2xl transition-all duration-300 opacity-0 pointer-events-none text-sm font-bold flex items-center gap-2">
         <span id="toast-icon">✨</span> <span id="toast-msg">提示訊息</span>
+    </div>
+
+    <div id="setup-modal" class="hidden fixed inset-0 z-[99] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl modal-enter text-center space-y-6">
+            <div class="space-y-2">
+                <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-3xl">📝</div>
+                <h2 class="text-xl font-black text-slate-800">初次見面！</h2>
+                <p class="text-sm text-slate-500 font-bold">為了方便組隊，請先設定您的資訊<br>(設定後可自動記憶)</p>
+            </div>
+            
+            <div class="space-y-4 text-left">
+                <div>
+                    <label class="text-[10px] font-black text-emerald-600 ml-2">遊戲暱稱 (Game ID)</label>
+                    <input id="setup-game-id" type="text" placeholder="例如: PikminMaster" class="w-full bg-slate-50 rounded-2xl p-4 font-bold focus:ring-2 focus:ring-emerald-400 outline-none text-slate-700">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-emerald-600 ml-2">好友代碼 (12位數字)</label>
+                    <input id="setup-code" type="tel" maxlength="12" placeholder="0000 0000 0000" class="w-full bg-slate-50 rounded-2xl p-4 font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-emerald-400 outline-none text-slate-700">
+                </div>
+            </div>
+
+            <button onclick="saveSetup()" class="w-full bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-200 active:scale-95 transition-all text-lg">
+                確認儲存，開始組隊！
+            </button>
+        </div>
     </div>
 
     <div class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-2xl relative">
@@ -34,12 +62,12 @@
             <section id="post-box" class="hidden bg-emerald-50 rounded-[2rem] p-5 border border-emerald-100 space-y-4 shadow-inner">
                 <div class="flex justify-between items-center">
                     <h2 class="text-xs font-black text-emerald-700 flex items-center gap-1">📢 發起新徵求</h2>
-                    <span class="text-[9px] bg-white px-2 py-0.5 rounded text-emerald-600 border border-emerald-100">自動記憶設定</span>
+                    <span class="text-[9px] bg-white px-2 py-0.5 rounded text-emerald-600 border border-emerald-100">已自動載入資料</span>
                 </div>
                 
                 <div class="bg-white rounded-2xl p-3 shadow-sm border border-emerald-50">
                     <label class="text-[10px] text-slate-400 font-bold block mb-1 ml-1">我的遊戲 ID</label>
-                    <input id="u-game-id" type="text" placeholder="請輸入遊戲暱稱" class="w-full bg-slate-50 rounded-xl p-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-200 text-emerald-800">
+                    <input id="u-game-id" type="text" readonly class="w-full bg-slate-50 rounded-xl p-2 text-sm font-bold text-emerald-800 cursor-not-allowed focus:outline-none">
                 </div>
 
                 <div class="space-y-2">
@@ -78,7 +106,7 @@
                     </div>
                 </div>
 
-                <input id="m-code" type="tel" maxlength="12" placeholder="好友代碼 (12位數字)" class="w-full bg-white rounded-2xl p-4 text-center font-mono text-lg tracking-[0.2em] shadow-sm border-none outline-none focus:ring-2 focus:ring-emerald-500">
+                <input id="m-code" type="tel" readonly class="w-full bg-white rounded-2xl p-4 text-center font-mono text-lg tracking-[0.2em] shadow-sm border-none outline-none text-slate-500 cursor-not-allowed">
                 
                 <button type="button" onclick="createPost()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 active:scale-95 transition-all">發布看板</button>
             </section>
@@ -96,22 +124,22 @@
     </div>
 
     <script>
-        // --- 1. 初始化 (請在此填入你的 Firebase Config) ---
-const firebaseConfig = {
-  apiKey: "AIzaSyC56QsHKnTuwHFNAwQ2hywBuUviu12wtb4",
-  authDomain: "chiangku-240a5.firebaseapp.com",
-  databaseURL: "https://chiangku-240a5-default-rtdb.firebaseio.com",
-  projectId: "chiangku-240a5",
-  storageBucket: "chiangku-240a5.firebasestorage.app",
-  messagingSenderId: "96178563604",
-  appId: "1:96178563604:web:7d44030277f9b665219501",
-  measurementId: "G-1M37BGXY44"
-};
+        // --- 1. Firebase 設定 (請填入你的設定) ---
+        const firebaseConfig = {
+            apiKey: "你的API_KEY",
+            authDomain: "你的專案ID.firebaseapp.com",
+            databaseURL: "你的資料庫網址",
+            projectId: "你的專案ID",
+            storageBucket: "你的專案ID.appspot.com",
+            messagingSenderId: "你的SENDER_ID",
+            appId: "你的APP_ID"
+        };
 
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
 
+        // 產生 1-30 選項
         function genNumOptions(selected) {
             let html = '';
             for(let i=1; i<=30; i++) {
@@ -132,40 +160,78 @@ const firebaseConfig = {
 
         function login() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
 
+        // --- 2. 登入與強制檢查邏輯 ---
         auth.onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('login-btn').classList.add('hidden');
                 document.getElementById('user-display').classList.remove('hidden');
-                document.getElementById('post-box').classList.remove('hidden');
                 document.getElementById('u-pic').src = user.photoURL;
+                
+                // 檢查是否已有完整資料
                 db.ref(`users/${user.uid}`).once('value', s => { 
                     const userData = s.val();
-                    if(userData) {
-                        document.getElementById('m-code').value = userData.code || "";
-                        document.getElementById('u-game-id').value = userData.gameId || user.displayName;
+                    
+                    // 【關鍵邏輯】如果沒有資料 -> 顯示強制彈窗
+                    if (!userData || !userData.code || !userData.gameId) {
+                        document.getElementById('setup-modal').classList.remove('hidden');
+                        document.getElementById('setup-game-id').value = user.displayName; // 預填 Google 名稱
                     } else {
-                        document.getElementById('u-game-id').value = user.displayName;
+                        // 資料完整 -> 載入主畫面
+                        showMainUI(userData);
                     }
                 });
-                loadData();
             } else {
                 document.getElementById('login-btn').classList.remove('hidden');
                 document.getElementById('user-display').classList.add('hidden');
                 document.getElementById('post-box').classList.add('hidden');
+                document.getElementById('setup-modal').classList.add('hidden');
                 document.getElementById('list').innerHTML = `<div class="text-center py-32 text-slate-200 font-black text-xl">請先登入</div>`;
             }
         });
 
+        // 儲存設定 (彈窗按鈕)
+        async function saveSetup() {
+            const id = document.getElementById('setup-game-id').value.trim();
+            const code = document.getElementById('setup-code').value.replace(/\D/g, '');
+
+            if (!id) return showToast("請輸入遊戲暱稱", "❌");
+            if (code.length < 12) return showToast("好友代碼需為 12 碼", "❌");
+
+            const user = auth.currentUser;
+            const updateData = {
+                gameId: id,
+                code: code
+            };
+
+            // 寫入資料庫
+            try {
+                await db.ref(`users/${user.uid}`).update(updateData);
+                showToast("設定完成！", "✅");
+                document.getElementById('setup-modal').classList.add('hidden');
+                showMainUI(updateData);
+            } catch (e) {
+                showToast("儲存失敗: " + e.message, "❌");
+            }
+        }
+
+        // 顯示主介面並填入資料
+        function showMainUI(userData) {
+            document.getElementById('post-box').classList.remove('hidden');
+            document.getElementById('u-game-id').value = userData.gameId;
+            document.getElementById('m-code').value = userData.code;
+            loadData();
+        }
+
+        // --- 3. 發文邏輯 ---
         async function createPost() {
             const user = auth.currentUser;
-            const code = document.getElementById('m-code').value.replace(/\D/g, '');
-            const gameId = document.getElementById('u-game-id').value.trim();
             const type = document.getElementById('m-type').value;
             const size = document.getElementById('m-size').value;
             const max = parseInt(document.getElementById('m-max').value);
-
-            if (!gameId) return showToast("請填寫遊戲 ID", "❌");
-            if (code.length < 12) return showToast("代碼不足 12 位", "❌");
+            
+            // 直接從唯讀欄位取值 (因為已經強制設定過了)
+            const gameId = document.getElementById('u-game-id').value;
+            const code = document.getElementById('m-code').value;
 
             const postKey = db.ref('posts').push().key;
             const data = {
@@ -181,9 +247,9 @@ const firebaseConfig = {
             const up = {};
             up[`/posts/${postKey}`] = data;
             up[`/private_data/${postKey}`] = { code };
-            up[`/users/${user.uid}/code`] = code;
-            up[`/users/${user.uid}/gameId`] = gameId;
-
+            
+            // 這裡不需要再更新 users，因為 saveSetup 已經做過了
+            
             try {
                 await db.ref().update(up);
                 showToast("發布成功！", "🚀");
@@ -201,6 +267,7 @@ const firebaseConfig = {
             showToast("人數已更新", "📝");
         }
 
+        // --- 4. 讀取邏輯 ---
         function loadData() {
             const me = auth.currentUser.uid;
             db.ref('posts').on('value', snapshot => {
@@ -265,7 +332,6 @@ const firebaseConfig = {
             });
         }
 
-        // --- 房主功能 (含拒絕按鈕) ---
         function renderHost(p) {
             const d = document.getElementById(`ctrl-${p.id}`);
             d.innerHTML = `<div class="flex gap-2">
@@ -280,7 +346,6 @@ const firebaseConfig = {
                 if(!box) return; box.innerHTML = "";
                 s.forEach(c => {
                     const a = c.val(); if(a.status === 'accepted') return;
-                    // 加入 拒絕 (reject) 按鈕
                     box.innerHTML += `<div class="flex justify-between items-center bg-blue-50/50 p-2 rounded-xl border border-blue-100/30">
                         <span class="text-xs font-black text-blue-600 ml-1">${a.name} 申請</span>
                         <div class="flex gap-2">
@@ -292,7 +357,6 @@ const firebaseConfig = {
             });
         }
 
-        // --- 訪客功能 (含取消按鈕) ---
         function renderGuest(p) {
             const d = document.getElementById(`ctrl-${p.id}`);
             const me = auth.currentUser.uid;
@@ -302,7 +366,6 @@ const firebaseConfig = {
                     d.innerHTML = p.current >= p.max ? `<button disabled class="w-full bg-slate-50 text-slate-300 py-3 rounded-2xl text-xs font-bold italic">隊伍已額滿</button>` :
                                   `<button onclick="apply('${p.id}')" class="w-full bg-emerald-50 text-emerald-600 font-black py-3 rounded-2xl hover:bg-emerald-100 active:scale-95 transition-all text-sm">🙋‍♂️ 申請加入隊伍</button>`;
                 } else if (a.status === 'pending') {
-                    // 加入 取消 (cancel) 按鈕
                     d.innerHTML = `
                         <div class="flex gap-2">
                             <div class="flex-1 bg-orange-50 text-orange-400 py-3 rounded-2xl text-xs text-center font-bold animate-pulse flex items-center justify-center gap-2">
@@ -321,7 +384,6 @@ const firebaseConfig = {
             });
         }
 
-        // 新增功能：取消申請
         function cancelApply(pid) {
             if(!confirm("確定要取消申請嗎？")) return;
             const uid = auth.currentUser.uid;
@@ -330,7 +392,6 @@ const firebaseConfig = {
                 .catch(() => showToast("取消失敗", "❌"));
         }
 
-        // 新增功能：拒絕申請
         function rejectApply(pid, targetUid) {
             if(!confirm("確定拒絕這位玩家？")) return;
             db.ref(`applications/${pid}/${targetUid}`).remove()
