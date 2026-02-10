@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 - 用戶自填版</title>
+    <title>Pikmin 蘑菇組隊站 - 管理員版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -12,7 +12,6 @@
         body { font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
         .mush-card { animation: cardFade 0.4s ease-out; }
         @keyframes cardFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        /* 彈窗動畫 */
         .modal-enter { animation: modalPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
         @keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
@@ -26,13 +25,11 @@
     <div id="setup-modal" class="hidden fixed inset-0 z-[99] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl modal-enter text-center space-y-5 relative">
             <button id="close-modal-btn" onclick="closeSetup()" class="hidden absolute top-4 right-4 text-slate-300 hover:text-slate-500 font-bold text-xl">✕</button>
-
             <div class="space-y-2">
                 <div class="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-2xl">📝</div>
                 <h2 id="modal-title" class="text-xl font-black text-slate-800">設定個人資料</h2>
-                <p class="text-xs text-slate-500 font-bold">請輸入您在遊戲中的名稱與代碼<br>方便隊友辨識與加好友</p>
+                <p class="text-xs text-slate-500 font-bold">請輸入您在遊戲中的名稱與代碼</p>
             </div>
-            
             <div class="space-y-4 text-left">
                 <div>
                     <label class="text-[10px] font-black text-emerald-600 ml-2">遊戲暱稱 (Game ID)</label>
@@ -43,10 +40,7 @@
                     <input id="setup-code" type="tel" maxlength="12" placeholder="0000 0000 0000" class="w-full bg-slate-50 rounded-2xl p-4 font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-emerald-400 outline-none text-slate-700 placeholder:font-normal">
                 </div>
             </div>
-
-            <button onclick="saveSetup()" class="w-full bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-200 active:scale-95 transition-all text-lg">
-                儲存設定
-            </button>
+            <button onclick="saveSetup()" class="w-full bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-200 active:scale-95 transition-all text-lg">儲存設定</button>
         </div>
     </div>
 
@@ -61,12 +55,14 @@
         </header>
 
         <main class="p-4 space-y-6 flex-grow">
+            <div id="admin-panel" class="hidden bg-slate-800 text-white p-3 rounded-xl text-xs font-bold text-center">
+                👮‍♂️ 管理員模式已啟用：您可以直接封鎖違規用戶
+            </div>
+
             <section id="post-box" class="hidden bg-emerald-50 rounded-[2rem] p-5 border border-emerald-100 space-y-4 shadow-inner">
                 <div class="flex justify-between items-center">
                     <h2 class="text-xs font-black text-emerald-700 flex items-center gap-1">📢 發起新徵求</h2>
-                    <button onclick="openSetup(true)" class="text-[10px] bg-white px-3 py-1 rounded-full text-emerald-600 border border-emerald-200 font-bold hover:bg-emerald-50 transition flex items-center gap-1">
-                        ✏️ 修改資料
-                    </button>
+                    <button onclick="openSetup(true)" class="text-[10px] bg-white px-3 py-1 rounded-full text-emerald-600 border border-emerald-200 font-bold hover:bg-emerald-50 transition flex items-center gap-1">✏️ 修改資料</button>
                 </div>
                 
                 <div class="bg-white rounded-2xl p-1 shadow-sm border border-emerald-50">
@@ -105,7 +101,6 @@
                             <option value="🎉 活動">🎉 活動</option>
                         </optgroup>
                     </select>
-
                     <div class="grid grid-cols-2 gap-2">
                         <select id="m-size" class="bg-white rounded-2xl p-3 text-sm font-bold shadow-sm border-none appearance-none focus:ring-2 focus:ring-emerald-500">
                             <option value="小">☁️ 小</option>
@@ -114,20 +109,20 @@
                             <option value="巨大">🔥 巨大</option>
                         </select>
                         <select id="m-max" class="bg-white rounded-2xl p-3 text-sm font-bold shadow-sm border-none appearance-none focus:ring-2 focus:ring-emerald-500">
-                            </select>
+                        </select>
                     </div>
                 </div>
                 
-                <button type="button" onclick="createPost()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 active:scale-95 transition-all">發布看板</button>
+                <button type="button" onclick="createPost()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 active:scale-95 transition-all">發布看板 (冷卻 5 分鐘)</button>
             </section>
 
             <section class="flex flex-col gap-4 pb-10">
                 <div class="flex justify-between items-center px-2 border-l-4 border-emerald-500 ml-1">
                     <h2 class="font-black text-slate-800 text-lg">即時看板</h2>
-                    <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">顯示 1 小時內</span>
+                    <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">LIVE 50 筆</span>
                 </div>
                 <div id="list" class="flex flex-col gap-4 min-h-[300px]">
-                    <div class="text-center py-20 text-slate-300 font-bold animate-pulse">正在更新列表...</div>
+                    <div class="text-center py-20 text-slate-300 font-bold animate-pulse">正在連線...</div>
                 </div>
             </section>
         </main>
@@ -145,18 +140,15 @@ const firebaseConfig = {
   appId: "1:96178563604:web:7d44030277f9b665219501",
   measurementId: "G-1M37BGXY44"
 };
-
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
 
-        function genNumOptions(selected) {
-            let html = '';
-            for(let i=1; i<=30; i++) {
-                const isSelected = (i == selected) ? 'selected' : '';
-                html += `<option value="${i}" ${isSelected}>缺 ${i} 人</option>`;
-            }
-            return html;
+        // ⚠️ 【重要】請填入你的 UID，這只是為了前端顯示按鈕，實際權限在 Firebase Rules
+        const ADMIN_UID = "a1Nnp6fbNxVtO9rDvknQ1YulZwi1"; 
+
+        function genNumOptions(s) {
+            let h=''; for(let i=1;i<=30;i++){ h+=`<option value="${i}" ${i==s?'selected':''}>缺 ${i} 人</option>`; } return h;
         }
         document.getElementById('m-max').innerHTML = genNumOptions(4);
 
@@ -170,211 +162,195 @@ const firebaseConfig = {
 
         function login() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
 
-        // --- 2. 登入與資料邏輯 ---
         auth.onAuthStateChanged(user => {
             if (user) {
-                document.getElementById('login-btn').classList.add('hidden');
-                document.getElementById('user-display').classList.remove('hidden');
-                document.getElementById('u-pic').src = user.photoURL;
-                
-                db.ref(`users/${user.uid}`).once('value', s => { 
-                    const userData = s.val();
-                    // 如果沒有資料 -> 開啟強制設定 (isEditMode = false)
-                    if (!userData || !userData.code || !userData.gameId) {
-                        openSetup(false); 
-                        // 【關鍵修改】不再預填 user.displayName，保持空白讓用戶輸入
-                        document.getElementById('setup-game-id').value = "";
-                    } else {
-                        showMainUI(userData);
+                db.ref(`banned_users/${user.uid}`).once('value', s => {
+                    if (s.exists()) { alert("已被封鎖"); auth.signOut(); return; }
+                    
+                    document.getElementById('login-btn').classList.add('hidden');
+                    document.getElementById('user-display').classList.remove('hidden');
+                    document.getElementById('u-pic').src = user.photoURL;
+
+                    // 管理員檢查
+                    if (user.uid === ADMIN_UID) {
+                        document.getElementById('admin-panel').classList.remove('hidden');
                     }
+                    
+                    db.ref(`users/${user.uid}`).once('value', s => { 
+                        const d = s.val();
+                        if (!d || !d.code || !d.gameId) {
+                            openSetup(false); 
+                            document.getElementById('setup-game-id').value = "";
+                        } else {
+                            showMainUI(d);
+                        }
+                    });
                 });
             } else {
                 document.getElementById('login-btn').classList.remove('hidden');
                 document.getElementById('user-display').classList.add('hidden');
                 document.getElementById('post-box').classList.add('hidden');
                 document.getElementById('setup-modal').classList.add('hidden');
+                document.getElementById('admin-panel').classList.add('hidden');
                 document.getElementById('list').innerHTML = `<div class="text-center py-32 text-slate-200 font-black text-xl">請先登入</div>`;
             }
         });
 
-        // 開啟設定彈窗
-        // isEditMode: true (顯示關閉按鈕, 帶入舊資料), false (強制設定, 空白或預設)
-        function openSetup(isEditMode) {
-            const modal = document.getElementById('setup-modal');
-            const closeBtn = document.getElementById('close-modal-btn');
-            
-            modal.classList.remove('hidden');
-            
-            if (isEditMode) {
-                // 修改模式：載入目前資料
-                closeBtn.classList.remove('hidden');
+        function openSetup(isEdit) {
+            const m = document.getElementById('setup-modal');
+            const c = document.getElementById('close-modal-btn');
+            m.classList.remove('hidden');
+            if(isEdit) {
+                c.classList.remove('hidden');
                 document.getElementById('modal-title').innerText = "修改個人資料";
-                // 從畫面上的唯讀欄位抓值回填到彈窗
                 document.getElementById('setup-game-id').value = document.getElementById('u-game-id').value;
                 document.getElementById('setup-code').value = document.getElementById('m-code').value;
             } else {
-                // 強制模式：清空或保持預設
-                closeBtn.classList.add('hidden');
+                c.classList.add('hidden');
                 document.getElementById('modal-title').innerText = "初次設定";
-                document.getElementById('setup-game-id').value = ""; // 確保空白
+                document.getElementById('setup-game-id').value = "";
                 document.getElementById('setup-code').value = "";
             }
         }
-
-        function closeSetup() {
-            document.getElementById('setup-modal').classList.add('hidden');
-        }
+        function closeSetup() { document.getElementById('setup-modal').classList.add('hidden'); }
 
         async function saveSetup() {
             const id = document.getElementById('setup-game-id').value.trim();
             const code = document.getElementById('setup-code').value.replace(/\D/g, '');
-
             if (!id) return showToast("請輸入遊戲暱稱", "❌");
             if (code.length < 12) return showToast("好友代碼需為 12 碼", "❌");
-
-            const user = auth.currentUser;
-            const updateData = {
-                gameId: id,
-                code: code
-            };
-
             try {
-                await db.ref(`users/${user.uid}`).update(updateData);
+                await db.ref(`users/${auth.currentUser.uid}`).update({gameId: id, code: code});
                 showToast("儲存成功！", "✅");
                 closeSetup();
-                showMainUI(updateData);
-            } catch (e) {
-                showToast("儲存失敗: " + e.message, "❌");
-            }
+                showMainUI({gameId: id, code: code});
+            } catch (e) { showToast("失敗: "+e.message, "❌"); }
         }
 
-        function showMainUI(userData) {
+        function showMainUI(d) {
             document.getElementById('post-box').classList.remove('hidden');
-            document.getElementById('u-game-id').value = userData.gameId;
-            document.getElementById('m-code').value = userData.code;
+            document.getElementById('u-game-id').value = d.gameId;
+            document.getElementById('m-code').value = d.code;
             loadData();
         }
 
-        // --- 3. 發文邏輯 ---
+        // --- 管理員專用：封鎖用戶 ---
+        async function banUser(targetUid, name) {
+            if (!confirm(`⚠️ 嚴重警告 ⚠️\n\n您確定要封鎖用戶「${name}」嗎？\n\n1. 該用戶將無法再發文或留言\n2. 該用戶將被強制登出\n3. 此操作立即生效`)) return;
+            
+            try {
+                // 寫入黑名單
+                await db.ref(`banned_users/${targetUid}`).set(true);
+                showToast(`已封鎖 ${name}`, "🚫");
+            } catch (e) {
+                showToast("權限不足或是錯誤", "❌");
+            }
+        }
+
+        // --- 管理員專用：強制刪除貼文 ---
+        async function adminDeletePost(pid) {
+            if (!confirm("管理員權限：確定強制刪除此貼文？")) return;
+            await db.ref().update({ [`/posts/${pid}`]: null, [`/private_data/${pid}`]: null, [`/applications/${pid}`]: null });
+            showToast("已強制刪除", "🗑️");
+        }
+
         async function createPost() {
             const user = auth.currentUser;
-            const type = document.getElementById('m-type').value;
-            const size = document.getElementById('m-size').value;
-            const max = parseInt(document.getElementById('m-max').value);
-            
-            const gameId = document.getElementById('u-game-id').value;
-            const code = document.getElementById('m-code').value;
+            const now = Date.now();
+            const s = await db.ref(`users/${user.uid}/lastPostTime`).once('value');
+            if (now - (s.val()||0) < 300000) return showToast(`冷卻中...`, "⏳");
 
             const postKey = db.ref('posts').push().key;
             const data = {
                 uid: user.uid,
-                name: gameId,
-                mushType: type,
-                mushSize: size,
-                max: max,
+                name: document.getElementById('u-game-id').value,
+                mushType: document.getElementById('m-type').value,
+                mushSize: document.getElementById('m-size').value,
+                max: parseInt(document.getElementById('m-max').value),
                 current: 0,
-                time: Date.now()
+                time: now
             };
-
             const up = {};
             up[`/posts/${postKey}`] = data;
-            up[`/private_data/${postKey}`] = { code };
+            up[`/private_data/${postKey}`] = { code: document.getElementById('m-code').value };
+            up[`/users/${user.uid}/lastPostTime`] = now;
             
-            try {
-                await db.ref().update(up);
-                showToast("發布成功！", "🚀");
-            } catch (e) { showToast("發布失敗", "❌"); }
+            try { await db.ref().update(up); showToast("發布成功！", "🚀"); } 
+            catch (e) { showToast("發布失敗", "❌"); }
         }
 
         async function deletePost(id) {
-            if(!confirm("確定撤回？這會刪除所有申請紀錄。")) return;
+            if(!confirm("確定撤回？")) return;
             await db.ref().update({ [`/posts/${id}`]: null, [`/private_data/${id}`]: null, [`/applications/${id}`]: null });
             showToast("已撤回", "🗑️");
         }
+        async function updateMax(id, val) { await db.ref(`posts/${id}`).update({ max: parseInt(val) }); showToast("已更新", "📝"); }
 
-        async function updateMax(id, val) {
-            await db.ref(`posts/${id}`).update({ max: parseInt(val) });
-            showToast("人數已更新", "📝");
-        }
-
-        // --- 4. 讀取邏輯 ---
         function loadData() {
             const me = auth.currentUser.uid;
-            db.ref('posts').on('value', snapshot => {
+            const isAdmin = (me === ADMIN_UID); // 判斷是否為管理員
+
+            db.ref('posts').orderByChild('time').limitToLast(50).on('value', snapshot => {
                 const listDiv = document.getElementById('list');
                 listDiv.innerHTML = "";
-                
-                const rawData = snapshot.val();
-                if (!rawData) {
-                    listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">目前沒有隊伍</div>`;
-                    return;
-                }
+                const r = snapshot.val();
+                if (!r) { listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">目前沒有隊伍</div>`; return; }
 
-                let posts = Object.keys(rawData).map(key => ({ id: key, ...rawData[key] }));
-                
+                let posts = Object.keys(r).map(k => ({ id: k, ...r[k] }));
                 const now = Date.now();
-                const oneHourAgo = now - (60 * 60 * 1000);
-                posts = posts.filter(p => {
-                    const t = parseInt(p.time);
-                    return t > oneHourAgo && t < (now + 5 * 60 * 1000);
-                });
+                posts = posts.filter(p => p.time > (now - 3600000) && p.time < (now + 300000));
                 posts.sort((a, b) => b.time - a.time);
-
-                if (posts.length === 0) {
-                    listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">暫無最新徵求</div>`;
-                    return;
-                }
 
                 posts.forEach(post => {
                     const minAgo = Math.floor((now - post.time) / 60000);
                     const timeStr = minAgo < 1 ? "剛剛" : `${minAgo} 分鐘前`;
-
                     const card = document.createElement('div');
                     card.className = "w-full block bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3 mush-card";
-                    
                     const isMy = post.uid === me;
-                    const isFull = post.current >= post.max;
-                    const displayType = post.mushType || post.type || "未知";
-                    const displaySize = post.mushSize || "一般";
+                    
+                    // 管理員按鈕 (如果是別人發的文，且我是管理員)
+                    let adminBtn = "";
+                    if (isAdmin && !isMy) {
+                        adminBtn = `
+                            <div class="flex gap-2 mb-2 justify-end border-b border-slate-50 pb-2">
+                                <button onclick="banUser('${post.uid}', '${post.name}')" class="text-[9px] bg-slate-800 text-white px-2 py-1 rounded">🚫 封鎖用戶</button>
+                                <button onclick="adminDeletePost('${post.id}')" class="text-[9px] bg-red-600 text-white px-2 py-1 rounded">🗑️ 強制刪文</button>
+                            </div>
+                        `;
+                    }
 
                     card.innerHTML = `
+                        ${adminBtn}
                         <div class="flex justify-between items-start">
                             <div class="flex flex-col gap-1 text-left">
                                 <div class="flex flex-wrap gap-1">
-                                    <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md font-bold">${displaySize}</span>
-                                    <span class="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-md font-black">${displayType}</span>
+                                    <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md font-bold">${post.mushSize||'一般'}</span>
+                                    <span class="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-md font-black">${post.mushType||'未知'}</span>
                                 </div>
                                 <h3 class="font-black text-slate-800 text-lg mt-1">${post.name} ${isMy ? '<span class="text-emerald-500 text-xs ml-1">(我)</span>' : ''}</h3>
                             </div>
                             <div class="text-right flex flex-col items-end">
-                                <span class="text-3xl font-black ${isFull ? 'text-slate-200' : 'text-emerald-500'} leading-none">${post.current}/${post.max}</span>
-                                <div class="text-[9px] text-slate-300 font-bold mt-2 tracking-wide flex items-center gap-1">
-                                    <span>${timeStr}</span>
-                                </div>
+                                <span class="text-3xl font-black ${post.current>=post.max ? 'text-slate-200' : 'text-emerald-500'} leading-none">${post.current}/${post.max}</span>
+                                <div class="text-[9px] text-slate-300 font-bold mt-2 tracking-wide">${timeStr}</div>
                             </div>
                         </div>
                         <div id="ctrl-${post.id}" class="pt-3 border-t border-slate-50 flex flex-col gap-2"></div>
                     `;
                     listDiv.appendChild(card);
-                    if (isMy) renderHost(post); else renderGuest(post);
+                    if (isMy) renderHost(post); else renderGuest(post, isAdmin);
                 });
             });
         }
 
         function renderHost(p) {
             const d = document.getElementById(`ctrl-${p.id}`);
-            d.innerHTML = `<div class="flex gap-2">
-                <select onchange="updateMax('${p.id}',this.value)" class="flex-1 bg-slate-50 text-xs font-bold rounded-xl p-2 border-none">
-                    ${genNumOptions(p.max)}
-                </select>
-                <button onclick="deletePost('${p.id}')" class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-xl font-bold active:scale-95 transition">撤回</button>
-            </div><div id="apps-${p.id}" class="flex flex-col gap-2 mt-2"></div>`;
-            
+            d.innerHTML = `<div class="flex gap-2"><select onchange="updateMax('${p.id}',this.value)" class="flex-1 bg-slate-50 text-xs font-bold rounded-xl p-2 border-none">${genNumOptions(p.max)}</select><button onclick="deletePost('${p.id}')" class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-xl font-bold active:scale-95 transition">撤回</button></div><div id="apps-${p.id}" class="flex flex-col gap-2 mt-2"></div>`;
             db.ref(`applications/${p.id}`).on('value', s => {
                 const box = document.getElementById(`apps-${p.id}`);
                 if(!box) return; box.innerHTML = "";
                 s.forEach(c => {
                     const a = c.val(); if(a.status === 'accepted') return;
+                    // 房主也可以封鎖來亂的申請者 (雖然不能全站封鎖，但可以拒絕)
                     box.innerHTML += `<div class="flex justify-between items-center bg-blue-50/50 p-2 rounded-xl border border-blue-100/30">
                         <span class="text-xs font-black text-blue-600 ml-1">${a.name} 申請</span>
                         <div class="flex gap-2">
@@ -386,7 +362,7 @@ const firebaseConfig = {
             });
         }
 
-        function renderGuest(p) {
+        function renderGuest(p, isAdmin) {
             const d = document.getElementById(`ctrl-${p.id}`);
             const me = auth.currentUser.uid;
             db.ref(`applications/${p.id}/${me}`).on('value', s => {
@@ -395,52 +371,28 @@ const firebaseConfig = {
                     d.innerHTML = p.current >= p.max ? `<button disabled class="w-full bg-slate-50 text-slate-300 py-3 rounded-2xl text-xs font-bold italic">隊伍已額滿</button>` :
                                   `<button onclick="apply('${p.id}')" class="w-full bg-emerald-50 text-emerald-600 font-black py-3 rounded-2xl hover:bg-emerald-100 active:scale-95 transition-all text-sm">🙋‍♂️ 申請加入隊伍</button>`;
                 } else if (a.status === 'pending') {
-                    d.innerHTML = `
-                        <div class="flex gap-2">
-                            <div class="flex-1 bg-orange-50 text-orange-400 py-3 rounded-2xl text-xs text-center font-bold animate-pulse flex items-center justify-center gap-2">
-                                <span>⏳ 等待房主核准...</span>
-                            </div>
-                            <button onclick="cancelApply('${p.id}')" class="bg-red-50 text-red-500 px-4 rounded-2xl text-xs font-bold active:scale-95">取消</button>
-                        </div>`;
+                    d.innerHTML = `<div class="flex gap-2"><div class="flex-1 bg-orange-50 text-orange-400 py-3 rounded-2xl text-xs text-center font-bold animate-pulse flex items-center justify-center gap-2"><span>⏳ 等待核准...</span></div><button onclick="cancelApply('${p.id}')" class="bg-red-50 text-red-500 px-4 rounded-2xl text-xs font-bold active:scale-95">取消</button></div>`;
                 } else if (a.status === 'accepted') {
                     db.ref(`private_data/${p.id}/code`).once('value', sc => {
-                        d.innerHTML = `<div class="bg-emerald-500 p-4 rounded-2xl text-white text-center shadow-lg shadow-emerald-100 cursor-pointer active:scale-95 transition" onclick="copy('${sc.val()}')">
-                            <p class="text-[9px] font-black opacity-80 mb-1 uppercase tracking-widest">已核准！點擊複製代碼</p>
-                            <div class="text-2xl font-mono font-black tracking-[0.2em]">${sc.val()}</div>
-                        </div>`;
+                        d.innerHTML = `<div class="bg-emerald-500 p-4 rounded-2xl text-white text-center shadow-lg shadow-emerald-100 cursor-pointer active:scale-95 transition" onclick="copy('${sc.val()}')"><p class="text-[9px] font-black opacity-80 mb-1 uppercase tracking-widest">已核准！點擊複製代碼</p><div class="text-2xl font-mono font-black tracking-[0.2em]">${sc.val()}</div></div>`;
                     });
                 }
             });
         }
 
-        function cancelApply(pid) {
-            if(!confirm("確定要取消申請嗎？")) return;
-            const uid = auth.currentUser.uid;
-            db.ref(`applications/${pid}/${uid}`).remove()
-                .then(() => showToast("已取消申請", "↩️"))
-                .catch(() => showToast("取消失敗", "❌"));
-        }
-
-        function rejectApply(pid, targetUid) {
-            if(!confirm("確定拒絕這位玩家？")) return;
-            db.ref(`applications/${pid}/${targetUid}`).remove()
-                .then(() => showToast("已拒絕玩家", "🚫"));
-        }
-
+        function cancelApply(pid) { if(!confirm("取消申請？")) return; db.ref(`applications/${pid}/${auth.currentUser.uid}`).remove(); }
+        function rejectApply(pid, uid) { if(!confirm("拒絕玩家？")) return; db.ref(`applications/${pid}/${uid}`).remove(); }
         function apply(pid) { 
             const user = auth.currentUser;
             db.ref(`users/${user.uid}/gameId`).once('value', s => {
-                const gid = s.val() || user.displayName;
-                db.ref(`applications/${pid}/${user.uid}`).set({ name: gid, status: 'pending' }); 
+                db.ref(`applications/${pid}/${user.uid}`).set({ name: s.val()||user.displayName, status: 'pending' }); 
             });
         }
-        
         function accept(pid, uid, cur, max) {
             if (cur >= max) return showToast("人數已滿", "⚠️");
             db.ref().update({ [`applications/${pid}/${uid}/status`]: 'accepted', [`posts/${pid}/current`]: cur + 1 });
         }
-
-        function copy(t) { navigator.clipboard.writeText(t).then(() => showToast("代碼已複製！", "📋")); }
+        function copy(t) { navigator.clipboard.writeText(t).then(() => showToast("已複製", "📋")); }
     </script>
 </body>
 </html>
