@@ -3,19 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 - 倒數計時版</title>
+    <title>Pikmin 蘑菇組隊站 - 旗艦版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
     <style>
         body { font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
-        .mush-card { animation: cardFade 0.4s ease-out; }
-        @keyframes cardFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .mush-card { transition: all 0.3s ease; }
         .modal-enter { animation: modalPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
         @keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        /* 禁用按鈕樣式 */
         .btn-disabled { background-color: #cbd5e1 !important; color: #64748b !important; cursor: not-allowed; pointer-events: none; }
+        
+        /* 篩選器樣式 */
+        .filter-btn { @apply px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 bg-white border border-slate-200 transition-all; }
+        .filter-active { @apply bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-200; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -117,16 +119,32 @@
                 <button id="btn-post" type="button" onclick="createPost()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 active:scale-95 transition-all">發布看板</button>
             </section>
 
+            <section class="text-center">
+                <a href="https://www.buymeacoffee.com/" target="_blank" class="inline-flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-slate-900 px-4 py-2 rounded-full text-xs font-black transition-all shadow-sm active:scale-95">
+                    ☕ 贊助開發者
+                </a>
+            </section>
+
             <section class="flex flex-col gap-4 pb-10">
-                <div class="flex justify-between items-center px-2 border-l-4 border-emerald-500 ml-1">
-                    <div class="flex items-center gap-2">
-                        <h2 class="font-black text-slate-800 text-lg">即時看板</h2>
-                        <button onclick="window.location.reload()" class="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full p-1 transition" title="重新整理">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                        </button>
+                <div class="flex flex-col gap-3">
+                    <div class="flex justify-between items-center px-2 border-l-4 border-emerald-500 ml-1">
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-black text-slate-800 text-lg">即時看板</h2>
+                            <button onclick="window.location.reload()" class="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full p-1 transition" title="重新整理">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            </button>
+                        </div>
+                        <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">LIVE</span>
                     </div>
-                    <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">LIVE 50 筆</span>
+
+                    <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar px-1">
+                        <button onclick="setFilter('all')" id="tab-all" class="filter-btn filter-active whitespace-nowrap">🌍 全部</button>
+                        <button onclick="setFilter('full')" id="tab-full" class="filter-btn whitespace-nowrap">🈵 已額滿</button>
+                        <button onclick="setFilter('my-posts')" id="tab-my-posts" class="filter-btn whitespace-nowrap">🙋‍♂️ 我的發布</button>
+                        <button onclick="setFilter('my-apps')" id="tab-my-apps" class="filter-btn whitespace-nowrap">📝 我的報名</button>
+                    </div>
                 </div>
+
                 <div id="list" class="flex flex-col gap-4 min-h-[300px]">
                     <div class="text-center py-20 text-slate-300 font-bold animate-pulse">正在連線...</div>
                 </div>
@@ -149,10 +167,12 @@ const firebaseConfig = {
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // ⚠️ 管理員 UID (請填入你的 UID)
+        // ⚠️ 管理員 UID
         const ADMIN_UID = "a1Nnp6fbNxVtO9rDvknQ1YulZwi1"; 
         
-        let cooldownInterval = null; // 倒數計時器變數
+        let cooldownInterval = null;
+        let globalPosts = []; // 儲存下載的原始資料
+        let currentFilter = 'all'; // 當前篩選模式
 
         function genNumOptions(s) {
             let h=''; for(let i=1;i<=30;i++){ h+=`<option value="${i}" ${i==s?'selected':''}>缺 ${i} 人</option>`; } return h;
@@ -182,18 +202,13 @@ const firebaseConfig = {
                     
                     db.ref(`users/${user.uid}`).once('value', s => { 
                         const d = s.val();
-                        // 1. 檢查資料是否完整
                         if (!d || !d.code || !d.gameId) {
                             openSetup(false); 
                             document.getElementById('setup-game-id').value = "";
                         } else {
                             showMainUI(d);
                         }
-                        
-                        // 2. 【關鍵】登入時立刻檢查是否還在冷卻中
-                        if (d && d.lastPostTime) {
-                            startCooldown(d.lastPostTime);
-                        }
+                        if (d && d.lastPostTime) startCooldown(d.lastPostTime);
                     });
                 });
             } else {
@@ -206,44 +221,27 @@ const firebaseConfig = {
             }
         });
 
-        // --- 倒數計時核心邏輯 ---
         function startCooldown(lastTime) {
             const btn = document.getElementById('btn-post');
-            const COOLDOWN_MS = 300000; // 5分鐘
-
-            // 清除舊的計時器 (防止重複)
+            const COOLDOWN_MS = 300000;
             if (cooldownInterval) clearInterval(cooldownInterval);
-
             cooldownInterval = setInterval(() => {
                 const now = Date.now();
-                const diff = now - lastTime;
-                const remaining = COOLDOWN_MS - diff;
-
+                const remaining = COOLDOWN_MS - (now - lastTime);
                 if (remaining <= 0) {
-                    // 時間到：解鎖按鈕
                     clearInterval(cooldownInterval);
                     btn.classList.remove('btn-disabled');
                     btn.innerHTML = "發布看板";
                     btn.disabled = false;
                 } else {
-                    // 時間未到：鎖定按鈕並更新時間
-                    const min = Math.floor((remaining / 1000 / 60) % 60);
-                    const sec = Math.floor((remaining / 1000) % 60);
-                    const timeStr = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-                    
-                    btn.classList.add('btn-disabled'); // 變灰
-                    btn.disabled = true; // 禁止點擊
-                    btn.innerHTML = `冷卻中 (${timeStr})`;
+                    const min = Math.floor((remaining/1000/60)%60);
+                    const sec = Math.floor((remaining/1000)%60);
+                    btn.classList.add('btn-disabled');
+                    btn.disabled = true;
+                    btn.innerHTML = `冷卻中 (${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')})`;
                 }
-            }, 1000); // 每秒更新一次
-            
-            // 立即執行一次，不要等1秒後才變色
-            const now = Date.now();
-            if (now - lastTime < COOLDOWN_MS) {
-                btn.classList.add('btn-disabled');
-                btn.disabled = true;
-                btn.innerHTML = "冷卻中...";
-            }
+            }, 1000);
+            if (Date.now() - lastTime < COOLDOWN_MS) { btn.classList.add('btn-disabled'); btn.disabled = true; btn.innerHTML = "冷卻中..."; }
         }
 
         function openSetup(isEdit) {
@@ -299,8 +297,17 @@ const firebaseConfig = {
         async function createPost() {
             const user = auth.currentUser;
             const now = Date.now();
+            
+            // 1. 冷卻檢查
             const s = await db.ref(`users/${user.uid}/lastPostTime`).once('value');
             if (now - (s.val()||0) < 300000) return showToast(`冷卻中...`, "⏳");
+
+            // 2. 【關鍵】檢查發文數量限制 (Client端檢查，提升體驗)
+            // 計算目前活著的貼文中，有多少是我的
+            const myActivePosts = globalPosts.filter(p => p.uid === user.uid).length;
+            if (myActivePosts >= 10) {
+                return showToast("您的有效發布已達 10 則上限，請先撤回舊文", "🛑");
+            }
 
             const postKey = db.ref('posts').push().key;
             const data = {
@@ -320,7 +327,6 @@ const firebaseConfig = {
             try { 
                 await db.ref().update(up); 
                 showToast("發布成功！", "🚀"); 
-                // 【關鍵】發文成功後，立刻觸發倒數
                 startCooldown(now);
             } 
             catch (e) { showToast("發布失敗", "❌"); }
@@ -333,58 +339,119 @@ const firebaseConfig = {
         }
         async function updateMax(id, val) { await db.ref(`posts/${id}`).update({ max: parseInt(val) }); showToast("已更新", "📝"); }
 
+        // --- 篩選與渲染邏輯 ---
+        function setFilter(type) {
+            currentFilter = type;
+            // 更新按鈕樣式
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('filter-active');
+                if(b.id === `tab-${type}`) b.classList.add('filter-active');
+            });
+            renderList(); // 重新渲染列表
+        }
+
         function loadData() {
+            const me = auth.currentUser.uid;
+            // 只抓取資料，存入 globalPosts
+            db.ref('posts').orderByChild('time').limitToLast(50).on('value', snapshot => {
+                const r = snapshot.val();
+                if (!r) { 
+                    globalPosts = [];
+                    renderList();
+                    return; 
+                }
+                let posts = Object.keys(r).map(k => ({ id: k, ...r[k] }));
+                const now = Date.now();
+                // 過濾時間
+                globalPosts = posts.filter(p => p.time > (now - 3600000) && p.time < (now + 300000));
+                // 排序：新到舊
+                globalPosts.sort((a, b) => b.time - a.time);
+                
+                renderList(); // 拿到新資料後渲染
+            });
+        }
+
+        function renderList() {
+            const listDiv = document.getElementById('list');
+            listDiv.innerHTML = "";
             const me = auth.currentUser.uid;
             const isAdmin = (me === ADMIN_UID);
 
-            db.ref('posts').orderByChild('time').limitToLast(50).on('value', snapshot => {
-                const listDiv = document.getElementById('list');
-                listDiv.innerHTML = "";
-                const r = snapshot.val();
-                if (!r) { listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">目前沒有隊伍</div>`; return; }
+            if (globalPosts.length === 0) {
+                listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">暫無資料</div>`;
+                return;
+            }
 
-                let posts = Object.keys(r).map(k => ({ id: k, ...r[k] }));
+            // 根據篩選器過濾資料
+            let displayPosts = globalPosts;
+            if (currentFilter === 'full') {
+                displayPosts = globalPosts.filter(p => p.current >= p.max);
+            } else if (currentFilter === 'my-posts') {
+                displayPosts = globalPosts.filter(p => p.uid === me);
+            } 
+            // 注意：'my-apps' (我的報名) 的過濾邏輯比較特殊，
+            // 因為我們需要等 renderGuest 非同步檢查完才知道是否報名。
+            // 這裡採用「CSS 隱藏法」：先全部渲染，然後讓 renderGuest 決定是否顯示。
+
+            if (displayPosts.length === 0 && currentFilter !== 'my-apps') {
+                 listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">沒有符合的隊伍</div>`;
+                 return;
+            }
+
+            displayPosts.forEach(post => {
                 const now = Date.now();
-                posts = posts.filter(p => p.time > (now - 3600000) && p.time < (now + 300000));
-                posts.sort((a, b) => b.time - a.time);
+                const minAgo = Math.floor((now - post.time) / 60000);
+                const timeStr = minAgo < 1 ? "剛剛" : `${minAgo} 分鐘前`;
+                const isMy = post.uid === me;
+                
+                // 【編號生成】使用時間戳後 5 碼
+                const shortId = post.time.toString().slice(-5);
 
-                posts.forEach(post => {
-                    const minAgo = Math.floor((now - post.time) / 60000);
-                    const timeStr = minAgo < 1 ? "剛剛" : `${minAgo} 分鐘前`;
-                    const card = document.createElement('div');
-                    card.className = "w-full block bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3 mush-card";
-                    const isMy = post.uid === me;
-                    
-                    let adminBtn = "";
-                    if (isAdmin && !isMy) {
-                        adminBtn = `<div class="flex gap-2 mb-2 justify-end border-b border-slate-50 pb-2"><button onclick="banUser('${post.uid}', '${post.name}')" class="text-[9px] bg-slate-800 text-white px-2 py-1 rounded">🚫 封鎖</button><button onclick="adminDeletePost('${post.id}')" class="text-[9px] bg-red-600 text-white px-2 py-1 rounded">🗑️ 刪文</button></div>`;
-                    }
+                const card = document.createElement('div');
+                card.id = `card-${post.id}`; // 給卡片一個 ID 方便操作
+                card.className = "w-full block bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3 mush-card";
+                
+                // 如果是「我的報名」模式，預設先隱藏，等確認有報名再顯示
+                if (currentFilter === 'my-apps') {
+                    card.style.display = 'none'; 
+                }
 
-                    card.innerHTML = `
-                        ${adminBtn}
-                        <div class="flex justify-between items-start">
-                            <div class="flex flex-col gap-1 text-left">
-                                <div class="flex flex-wrap gap-1">
-                                    <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md font-bold">${post.mushSize||'一般'}</span>
-                                    <span class="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-md font-black">${post.mushType||'未知'}</span>
-                                </div>
-                                <h3 class="font-black text-slate-800 text-lg mt-1">${post.name} ${isMy ? '<span class="text-emerald-500 text-xs ml-1">(我)</span>' : ''}</h3>
+                let adminBtn = "";
+                if (isAdmin && !isMy) {
+                    adminBtn = `<div class="flex gap-2 mb-2 justify-end border-b border-slate-50 pb-2"><button onclick="banUser('${post.uid}', '${post.name}')" class="text-[9px] bg-slate-800 text-white px-2 py-1 rounded">🚫 封鎖</button><button onclick="adminDeletePost('${post.id}')" class="text-[9px] bg-red-600 text-white px-2 py-1 rounded">🗑️ 刪文</button></div>`;
+                }
+
+                card.innerHTML = `
+                    ${adminBtn}
+                    <div class="flex justify-between items-start">
+                        <div class="flex flex-col gap-1 text-left">
+                            <div class="flex flex-wrap gap-1 items-center">
+                                <span class="text-[9px] font-mono text-slate-300 font-bold">#${shortId}</span>
+                                <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md font-bold">${post.mushSize||'一般'}</span>
+                                <span class="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-md font-black">${post.mushType||'未知'}</span>
                             </div>
-                            <div class="text-right flex flex-col items-end">
-                                <span class="text-3xl font-black ${post.current>=post.max ? 'text-slate-200' : 'text-emerald-500'} leading-none">${post.current}/${post.max}</span>
-                                <div class="text-[9px] text-slate-300 font-bold mt-2 tracking-wide">${timeStr}</div>
-                            </div>
+                            <h3 class="font-black text-slate-800 text-lg mt-1">${post.name} ${isMy ? '<span class="text-emerald-500 text-xs ml-1">(我)</span>' : ''}</h3>
                         </div>
-                        <div id="ctrl-${post.id}" class="pt-3 border-t border-slate-50 flex flex-col gap-2"></div>
-                    `;
-                    listDiv.appendChild(card);
-                    if (isMy) renderHost(post); else renderGuest(post, isAdmin);
-                });
+                        <div class="text-right flex flex-col items-end">
+                            <span class="text-3xl font-black ${post.current>=post.max ? 'text-slate-200' : 'text-emerald-500'} leading-none">${post.current}/${post.max}</span>
+                            <div class="text-[9px] text-slate-300 font-bold mt-2 tracking-wide">${timeStr}</div>
+                        </div>
+                    </div>
+                    <div id="ctrl-${post.id}" class="pt-3 border-t border-slate-50 flex flex-col gap-2"></div>
+                `;
+                listDiv.appendChild(card);
+                if (isMy) renderHost(post); else renderGuest(post, isAdmin);
             });
         }
 
         function renderHost(p) {
             const d = document.getElementById(`ctrl-${p.id}`);
+            // 房主模式：如果在「我的報名」頁籤，即使是我發的文也隱藏（因為不是報名）
+            if (currentFilter === 'my-apps') {
+                 document.getElementById(`card-${p.id}`).remove();
+                 return;
+            }
+
             d.innerHTML = `<div class="flex gap-2"><select onchange="updateMax('${p.id}',this.value)" class="flex-1 bg-slate-50 text-xs font-bold rounded-xl p-2 border-none">${genNumOptions(p.max)}</select><button onclick="deletePost('${p.id}')" class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-xl font-bold active:scale-95 transition">撤回</button></div><div id="apps-${p.id}" class="flex flex-col gap-2 mt-2"></div>`;
             db.ref(`applications/${p.id}`).on('value', s => {
                 const box = document.getElementById(`apps-${p.id}`);
@@ -399,8 +466,19 @@ const firebaseConfig = {
         function renderGuest(p, isAdmin) {
             const d = document.getElementById(`ctrl-${p.id}`);
             const me = auth.currentUser.uid;
+            
             db.ref(`applications/${p.id}/${me}`).on('value', s => {
                 const a = s.val();
+                
+                // 【關鍵】我的報名篩選邏輯
+                if (currentFilter === 'my-apps') {
+                    if (a) { // 有申請紀錄
+                        document.getElementById(`card-${p.id}`).style.display = 'block';
+                    } else { // 沒申請
+                        // 保持隱藏 (不需要做動作，因為預設就是 hidden)
+                    }
+                }
+
                 if (!a) {
                     d.innerHTML = p.current >= p.max ? `<button disabled class="w-full bg-slate-50 text-slate-300 py-3 rounded-2xl text-xs font-bold italic">隊伍已額滿</button>` : `<button onclick="apply('${p.id}')" class="w-full bg-emerald-50 text-emerald-600 font-black py-3 rounded-2xl hover:bg-emerald-100 active:scale-95 transition-all text-sm">🙋‍♂️ 申請加入隊伍</button>`;
                 } else if (a.status === 'pending') {
