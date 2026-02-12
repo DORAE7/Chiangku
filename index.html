@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 - 通知版</title>
+    <title>Pikmin 蘑菇組隊站 - 通知優化版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -18,8 +18,10 @@
         .filter-btn { @apply relative px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 bg-white border border-slate-200 transition-all; }
         .filter-active { @apply bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-200; }
         
-        /* 紅點樣式 */
-        .badge { @apply absolute -top-1 -right-1 bg-red-500 text-white text-[9px] h-4 w-4 flex items-center justify-center rounded-full border border-white shadow-sm; }
+        /* 優化後的紅點樣式 */
+        .badge { 
+            @apply absolute -top-1.5 -right-1 bg-red-500 text-white text-[9px] min-w-[16px] h-4 flex items-center justify-center rounded-full border border-white shadow-sm px-1 leading-none font-black z-10; 
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -149,11 +151,13 @@
                     <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar px-1">
                         <button onclick="setFilter('all')" id="tab-all" class="filter-btn filter-active whitespace-nowrap">🌍 全部</button>
                         <button onclick="setFilter('full')" id="tab-full" class="filter-btn whitespace-nowrap">🈵 已額滿</button>
-                        <button onclick="setFilter('my-posts')" id="tab-my-posts" class="filter-btn whitespace-nowrap">
+                        
+                        <button onclick="setFilter('my-posts')" id="tab-my-posts" class="filter-btn whitespace-nowrap pr-4">
                             🙋‍♂️ 我的發布
                             <span id="badge-my-posts" class="hidden badge">0</span>
                         </button>
-                        <button onclick="setFilter('my-apps')" id="tab-my-apps" class="filter-btn whitespace-nowrap">
+                        
+                        <button onclick="setFilter('my-apps')" id="tab-my-apps" class="filter-btn whitespace-nowrap pr-4">
                             📝 我的報名
                             <span id="badge-my-apps" class="hidden badge">0</span>
                         </button>
@@ -182,6 +186,7 @@ const firebaseConfig = {
         const auth = firebase.auth();
         const db = firebase.database();
 
+        // ⚠️ 管理員 UID (請填入)
         const ADMIN_UID = "a1Nnp6fbNxVtO9rDvknQ1YulZwi1"; 
         
         let GLOBAL_COOLDOWN_MS = 300000;
@@ -189,8 +194,10 @@ const firebaseConfig = {
         let cooldownInterval = null;
         let globalPosts = []; 
         let currentFilter = 'all'; 
-        // 儲存監聽器引用以便清除 (防止記憶體洩漏)
         let activeListeners = [];
+        
+        // 用來追蹤我的報名通知
+        let myAppsNotificationData = {}; // { postId: true/false }
 
         db.ref('settings').on('value', s => {
             const val = s.val() || {};
@@ -373,6 +380,22 @@ const firebaseConfig = {
                 b.classList.remove('filter-active');
                 if(b.id === `tab-${type}`) b.classList.add('filter-active');
             });
+            
+            // 【關鍵】如果切換到「我的報名」，則將目前的所有通知設為「已讀」
+            if (type === 'my-apps') {
+                const me = auth.currentUser.uid;
+                // 將目前已知的核准 ID 存入 local storage
+                let viewedIds = JSON.parse(localStorage.getItem(`viewed_apps_${me}`)) || [];
+                // 找出目前所有狀態為 accepted 的貼文 ID
+                const currentAcceptedIds = Object.keys(myAppsNotificationData);
+                // 合併並去重
+                const newViewed = [...new Set([...viewedIds, ...currentAcceptedIds])];
+                localStorage.setItem(`viewed_apps_${me}`, JSON.stringify(newViewed));
+                
+                // 立即更新紅點 (變為 0)
+                updateBadgeDisplay();
+            }
+
             renderList();
         }
 
@@ -389,51 +412,85 @@ const firebaseConfig = {
                 globalPosts = posts.reverse(); 
                 document.getElementById('total-count').innerText = globalPosts.length;
                 
-                checkBadges(me); // 檢查紅點通知
+                checkBadges(me);
                 renderList();
             });
         }
 
-        // --- 核心：檢查紅點通知 ---
+        // --- 核心：紅點檢查 (優化數字版) ---
         function checkBadges(me) {
-            // 清除舊監聽，避免重複 (簡易優化：只在列表刷新時重置)
             activeListeners.forEach(l => l.ref.off('value', l.cb));
             activeListeners = [];
 
-            let myPostsBadge = 0;
-            let myAppsBadge = 0;
+            // 重置計數
+            let myPostsPendingCount = 0;
+            // 清空暫存
+            myAppsNotificationData = {}; 
+
             const btnMyPosts = document.getElementById('badge-my-posts');
             const btnMyApps = document.getElementById('badge-my-apps');
 
+            // 建立一個 Promise 陣列來等待所有 application 檢查完 (但 on 是持續的，這裡做簡化處理)
+            // 由於 Firebase on 是非同步，我們直接在 callback 內更新 UI
+            
+            // 為了避免 UI 閃爍，我們採用累加更新的方式，但因為是分別監聽，所以比較複雜。
+            // 這裡採用一個全局計數物件來維護
+            let pendingCountsByPost = {}; // { postId: count }
+            
             globalPosts.forEach(post => {
                 const ref = db.ref(`applications/${post.id}`);
                 const cb = ref.on('value', s => {
                     const apps = s.val();
-                    if (!apps) return;
                     
-                    // 1. 檢查「我的發布」通知 (我是房主，有人 pending)
+                    // 1. 計算「我的發布」待審核數
                     if (post.uid === me) {
-                        let pendingCount = 0;
-                        Object.values(apps).forEach(a => { if(a.status === 'pending') pendingCount++; });
-                        if (pendingCount > 0) {
-                            // 這裡只做簡單的標示，不累加跨貼文的數量以免邏輯過於複雜
-                            btnMyPosts.innerText = "!";
+                        let count = 0;
+                        if (apps) Object.values(apps).forEach(a => { if(a.status === 'pending') count++; });
+                        pendingCountsByPost[post.id] = count;
+                        
+                        // 加總所有貼文的 pending 數
+                        let totalPending = Object.values(pendingCountsByPost).reduce((a, b) => a + b, 0);
+                        if (totalPending > 0) {
+                            btnMyPosts.innerText = totalPending > 9 ? "9+" : totalPending;
                             btnMyPosts.classList.remove('hidden');
+                        } else {
+                            btnMyPosts.classList.add('hidden');
                         }
                     }
 
-                    // 2. 檢查「我的報名」通知 (我是申請者，狀態 accepted)
-                    if (apps[me] && apps[me].status === 'accepted') {
-                        btnMyApps.innerText = "!"; 
-                        btnMyApps.classList.remove('hidden');
+                    // 2. 計算「我的報名」核准數
+                    if (apps && apps[me] && apps[me].status === 'accepted') {
+                        myAppsNotificationData[post.id] = true;
+                    } else {
+                        delete myAppsNotificationData[post.id];
                     }
+                    updateBadgeDisplay(); // 更新我的報名紅點
                 });
                 activeListeners.push({ ref: ref, cb: cb });
             });
+        }
+
+        function updateBadgeDisplay() {
+            const me = auth.currentUser.uid;
+            const btnMyApps = document.getElementById('badge-my-apps');
             
-            // 如果沒有通知，隱藏 (這裡只是初始化，實際由上方 callback 控制顯示)
-            btnMyPosts.classList.add('hidden');
-            btnMyApps.classList.add('hidden');
+            // 讀取已讀紀錄
+            const viewedIds = JSON.parse(localStorage.getItem(`viewed_apps_${me}`)) || [];
+            
+            // 計算「未讀」的核准通知
+            let unreadCount = 0;
+            Object.keys(myAppsNotificationData).forEach(pid => {
+                if (!viewedIds.includes(pid)) {
+                    unreadCount++;
+                }
+            });
+
+            if (unreadCount > 0) {
+                btnMyApps.innerText = unreadCount > 9 ? "9+" : unreadCount;
+                btnMyApps.classList.remove('hidden');
+            } else {
+                btnMyApps.classList.add('hidden');
+            }
         }
 
         function renderList() {
@@ -458,6 +515,8 @@ const firebaseConfig = {
                 const card = document.createElement('div');
                 card.id = `card-${post.id}`;
                 card.className = "w-full block bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3 mush-card";
+                
+                // 【修改】我的報名預設隱藏
                 if (currentFilter === 'my-apps') card.style.display = 'none'; 
 
                 let adminBtn = "";
@@ -495,7 +554,7 @@ const firebaseConfig = {
                 if(!box) return; box.innerHTML = "";
                 s.forEach(c => {
                     const a = c.val(); 
-                    // 【關鍵修改】已核准的顯示為綠色列表，不隱藏
+                    // 【關鍵修改】房主介面：保留已加入的成員名單 (綠色)
                     if(a.status === 'accepted') {
                         box.innerHTML += `<div class="flex justify-between items-center bg-emerald-50 p-2 rounded-xl border border-emerald-100"><span class="text-xs font-black text-emerald-700 ml-1">✅ ${a.name} (已加入)</span></div>`;
                     } else {
@@ -510,7 +569,9 @@ const firebaseConfig = {
             const me = auth.currentUser.uid;
             db.ref(`applications/${p.id}/${me}`).on('value', s => {
                 const a = s.val();
-                if (currentFilter === 'my-apps') { if (a) document.getElementById(`card-${p.id}`).style.display = 'block'; }
+                if (currentFilter === 'my-apps') {
+                    if (a) document.getElementById(`card-${p.id}`).style.display = 'block';
+                }
                 if (!a) {
                     d.innerHTML = p.current >= p.max ? `<button disabled class="w-full bg-slate-50 text-slate-300 py-3 rounded-2xl text-xs font-bold italic">隊伍已額滿</button>` : `<button onclick="apply('${p.id}')" class="w-full bg-emerald-50 text-emerald-600 font-black py-3 rounded-2xl hover:bg-emerald-100 active:scale-95 transition-all text-sm">🙋‍♂️ 申請加入隊伍</button>`;
                 } else if (a.status === 'pending') {
