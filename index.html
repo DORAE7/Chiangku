@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 - 完美修復版</title>
+    <title>Pikmin 蘑菇組隊站 - 完美版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -15,34 +15,35 @@
         @keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .btn-disabled { background-color: #cbd5e1 !important; color: #64748b !important; cursor: not-allowed; pointer-events: none; }
         
-        /* --- 修復後的 CSS (標準寫法，確保紅點顯示) --- */
+        /* 篩選按鈕樣式 (關鍵修正：overflow: visible) */
         .filter-btn { 
             position: relative;
             padding: 6px 14px;
             border-radius: 9999px;
             font-size: 12px;
             font-weight: 700;
-            color: #64748b; /* slate-500 */
+            color: #64748b; 
             background-color: white;
-            border: 1px solid #e2e8f0; /* slate-200 */
+            border: 1px solid #e2e8f0;
             transition: all 0.2s;
             white-space: nowrap;
             margin-right: 4px;
+            overflow: visible; /* 【修復】確保紅點不會被截掉 */
         }
         
         .filter-active { 
-            background-color: #10b981; /* emerald-500 */
+            background-color: #10b981;
             color: white !important;
             border-color: #10b981;
             box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); 
         }
 
-        /* 紅點樣式：強制定位在右上角 */
+        /* 紅點樣式 (微調位置與置中) */
         .badge {
             position: absolute;
-            top: -6px;
-            right: -6px;
-            background-color: #ef4444; /* red-500 */
+            top: -8px; /* 往上移一點，避免擋住文字 */
+            right: -4px;
+            background-color: #ef4444;
             color: white;
             font-size: 10px;
             font-weight: 900;
@@ -54,9 +55,10 @@
             border-radius: 9999px;
             border: 2px solid white;
             z-index: 20;
-            line-height: 1;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-            padding: 0 4px; /* 容納多位數 */
+            padding: 0 4px;
+            line-height: 0; /* 【修復】解決數字垂直位置問題 */
+            padding-bottom: 1px; /* 視覺微調 */
         }
     </style>
 </head>
@@ -184,16 +186,16 @@
                         <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">總計: <span id="total-count">...</span></span>
                     </div>
 
-                    <div class="flex gap-2 overflow-x-auto pb-2 px-1">
-                        <button onclick="setFilter('all')" id="tab-all" class="filter-btn filter-active">🌍 全部</button>
-                        <button onclick="setFilter('full')" id="tab-full" class="filter-btn">🈵 已額滿</button>
+                    <div class="flex gap-2 overflow-x-auto pb-4 px-1 no-scrollbar">
+                        <button onclick="setFilter('all')" id="tab-all" class="filter-btn filter-active whitespace-nowrap">🌍 全部</button>
+                        <button onclick="setFilter('full')" id="tab-full" class="filter-btn whitespace-nowrap">🈵 已額滿</button>
                         
-                        <button onclick="setFilter('my-posts')" id="tab-my-posts" class="filter-btn">
+                        <button onclick="setFilter('my-posts')" id="tab-my-posts" class="filter-btn whitespace-nowrap pr-4">
                             🙋‍♂️ 我的發布
                             <span id="badge-my-posts" class="hidden badge">0</span>
                         </button>
                         
-                        <button onclick="setFilter('my-apps')" id="tab-my-apps" class="filter-btn">
+                        <button onclick="setFilter('my-apps')" id="tab-my-apps" class="filter-btn whitespace-nowrap pr-4">
                             📝 我的報名
                             <span id="badge-my-apps" class="hidden badge">0</span>
                         </button>
@@ -222,7 +224,7 @@ const firebaseConfig = {
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // ⚠️ 管理員 UID
+        // ⚠️ 管理員 UID (請填入)
         const ADMIN_UID = "a1Nnp6fbNxVtO9rDvknQ1YulZwi1"; 
         
         let GLOBAL_COOLDOWN_MS = 300000;
@@ -430,164 +432,4 @@ const firebaseConfig = {
             db.ref('posts').orderByChild('time').limitToLast(50).on('value', snapshot => {
                 const r = snapshot.val();
                 if (!r) { globalPosts = []; document.getElementById('total-count').innerText = 0; renderList(); return; }
-                let posts = Object.keys(r).map(k => ({ id: k, ...r[k] }));
-                const now = Date.now();
-                posts = posts.filter(p => p.time > (now - 3600000) && p.time < (now + 300000));
-                posts.sort((a, b) => a.time - b.time);
-                posts = posts.map((p, index) => ({ ...p, serialNumber: index + 1 }));
-                globalPosts = posts.reverse(); 
-                document.getElementById('total-count').innerText = globalPosts.length;
-                checkBadges(me);
-                renderList();
-            });
-        }
-
-        function checkBadges(me) {
-            activeListeners.forEach(l => l.ref.off('value', l.cb));
-            activeListeners = [];
-            let pendingCountsByPost = {}; 
-            myAppsNotificationData = {}; 
-            const btnMyPosts = document.getElementById('badge-my-posts');
-
-            globalPosts.forEach(post => {
-                const ref = db.ref(`applications/${post.id}`);
-                const cb = ref.on('value', s => {
-                    const apps = s.val();
-                    if (post.uid === me) {
-                        let count = 0;
-                        if (apps) Object.values(apps).forEach(a => { if(a.status === 'pending') count++; });
-                        pendingCountsByPost[post.id] = count;
-                        let totalPending = Object.values(pendingCountsByPost).reduce((a, b) => a + b, 0);
-                        if (totalPending > 0) {
-                            btnMyPosts.innerText = totalPending > 9 ? "9+" : totalPending;
-                            btnMyPosts.classList.remove('hidden');
-                        } else {
-                            btnMyPosts.classList.add('hidden');
-                        }
-                    }
-                    if (apps && apps[me] && apps[me].status === 'accepted') {
-                        myAppsNotificationData[post.id] = true;
-                    } else {
-                        delete myAppsNotificationData[post.id];
-                    }
-                    updateBadgeDisplay();
-                });
-                activeListeners.push({ ref: ref, cb: cb });
-            });
-        }
-
-        function updateBadgeDisplay() {
-            const me = auth.currentUser.uid;
-            const btnMyApps = document.getElementById('badge-my-apps');
-            const viewedIds = JSON.parse(localStorage.getItem(`viewed_apps_${me}`)) || [];
-            let unreadCount = 0;
-            Object.keys(myAppsNotificationData).forEach(pid => {
-                if (!viewedIds.includes(pid)) unreadCount++;
-            });
-            if (unreadCount > 0) {
-                btnMyApps.innerText = unreadCount > 9 ? "9+" : unreadCount;
-                btnMyApps.classList.remove('hidden');
-            } else {
-                btnMyApps.classList.add('hidden');
-            }
-        }
-
-        function renderList() {
-            const listDiv = document.getElementById('list');
-            listDiv.innerHTML = "";
-            const me = auth.currentUser.uid;
-            const isAdmin = (me === ADMIN_UID);
-            if (globalPosts.length === 0) { listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">暫無資料</div>`; return; }
-            let displayPosts = globalPosts;
-            if (currentFilter === 'full') displayPosts = globalPosts.filter(p => p.current >= p.max);
-            else if (currentFilter === 'my-posts') displayPosts = globalPosts.filter(p => p.uid === me);
-            if (displayPosts.length === 0 && currentFilter !== 'my-apps') { listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">沒有符合的隊伍</div>`; return; }
-
-            displayPosts.forEach(post => {
-                const now = Date.now();
-                const minAgo = Math.floor((now - post.time) / 60000);
-                const timeStr = minAgo < 1 ? "剛剛" : `${minAgo} 分鐘前`;
-                const isMy = post.uid === me;
-                const card = document.createElement('div');
-                card.id = `card-${post.id}`;
-                card.className = "w-full block bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3 mush-card";
-                if (currentFilter === 'my-apps') card.style.display = 'none'; 
-                let adminBtn = "";
-                if (isAdmin && !isMy) adminBtn = `<div class="flex gap-2 mb-2 justify-end border-b border-slate-50 pb-2"><button onclick="banUser('${post.uid}', '${post.name}')" class="text-[9px] bg-slate-800 text-white px-2 py-1 rounded">🚫 封鎖</button><button onclick="adminDeletePost('${post.id}')" class="text-[9px] bg-red-600 text-white px-2 py-1 rounded">🗑️ 刪文</button></div>`;
-                card.innerHTML = `
-                    ${adminBtn}
-                    <div class="flex justify-between items-start">
-                        <div class="flex flex-col gap-1 text-left">
-                            <div class="flex flex-wrap gap-1 items-center">
-                                <span class="text-[10px] font-black text-white bg-slate-400 px-1.5 rounded">No.${post.serialNumber}</span>
-                                <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md font-bold">${post.mushSize||'一般'}</span>
-                                <span class="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-md font-black">${post.mushType||'未知'}</span>
-                            </div>
-                            <h3 class="font-black text-slate-800 text-lg mt-1">${post.name} ${isMy ? '<span class="text-emerald-500 text-xs ml-1">(我)</span>' : ''}</h3>
-                        </div>
-                        <div class="text-right flex flex-col items-end">
-                            <span class="text-3xl font-black ${post.current>=post.max ? 'text-slate-200' : 'text-emerald-500'} leading-none">${post.current}/${post.max}</span>
-                            <div class="text-[9px] text-slate-300 font-bold mt-2 tracking-wide">${timeStr}</div>
-                        </div>
-                    </div>
-                    <div id="ctrl-${post.id}" class="pt-3 border-t border-slate-50 flex flex-col gap-2"></div>
-                `;
-                listDiv.appendChild(card);
-                if (isMy) renderHost(post); else renderGuest(post, isAdmin);
-            });
-        }
-
-        function renderHost(p) {
-            const d = document.getElementById(`ctrl-${p.id}`);
-            if (currentFilter === 'my-apps') { document.getElementById(`card-${p.id}`).remove(); return; }
-            d.innerHTML = `<div class="flex gap-2"><select onchange="updateMax('${p.id}',this.value)" class="flex-1 bg-slate-50 text-xs font-bold rounded-xl p-2 border-none">${genNumOptions(p.max)}</select><button onclick="deletePost('${p.id}')" class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-xl font-bold active:scale-95 transition">撤回</button></div><div id="apps-${p.id}" class="flex flex-col gap-2 mt-2"></div>`;
-            db.ref(`applications/${p.id}`).on('value', s => {
-                const box = document.getElementById(`apps-${p.id}`);
-                if(!box) return; box.innerHTML = "";
-                s.forEach(c => {
-                    const a = c.val(); 
-                    if(a.status === 'accepted') {
-                        box.innerHTML += `<div class="flex justify-between items-center bg-emerald-50 p-2 rounded-xl border border-emerald-100"><span class="text-xs font-black text-emerald-700 ml-1">✅ ${a.name} <span class="text-[10px] text-emerald-400 font-mono bg-white px-1.5 rounded ml-1 cursor-pointer hover:bg-emerald-100 transition" onclick="copy('${a.code}')" title="點擊複製">${a.code||'無代碼'}</span></span></div>`;
-                    } else {
-                        box.innerHTML += `<div class="flex justify-between items-center bg-blue-50/50 p-2 rounded-xl border border-blue-100/30"><div class="flex flex-col"><span class="text-xs font-black text-blue-600 ml-1">${a.name}</span><span class="text-[9px] text-slate-400 font-mono ml-1 cursor-pointer hover:text-blue-500 transition" onclick="copy('${a.code}')">${a.code||'無代碼'}</span></div><div class="flex gap-2"><button onclick="rejectApply('${p.id}', '${c.key}')" class="bg-slate-200 text-slate-500 text-[10px] px-3 py-1.5 rounded-lg font-bold">拒絕</button><button onclick="accept('${p.id}','${c.key}',${p.current},${p.max})" class="bg-blue-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold shadow-md shadow-blue-100">接受</button></div></div>`;
-                    }
-                });
-            });
-        }
-
-        function renderGuest(p, isAdmin) {
-            const d = document.getElementById(`ctrl-${p.id}`);
-            const me = auth.currentUser.uid;
-            db.ref(`applications/${p.id}/${me}`).on('value', s => {
-                const a = s.val();
-                if (currentFilter === 'my-apps') { if (a) document.getElementById(`card-${p.id}`).style.display = 'block'; }
-                if (!a) {
-                    d.innerHTML = p.current >= p.max ? `<button disabled class="w-full bg-slate-50 text-slate-300 py-3 rounded-2xl text-xs font-bold italic">隊伍已額滿</button>` : `<button onclick="apply('${p.id}')" class="w-full bg-emerald-50 text-emerald-600 font-black py-3 rounded-2xl hover:bg-emerald-100 active:scale-95 transition-all text-sm">🙋‍♂️ 申請加入隊伍</button>`;
-                } else if (a.status === 'pending') {
-                    d.innerHTML = `<div class="flex gap-2"><div class="flex-1 bg-orange-50 text-orange-400 py-3 rounded-2xl text-xs text-center font-bold animate-pulse flex items-center justify-center gap-2"><span>⏳ 等待核准...</span></div><button onclick="cancelApply('${p.id}')" class="bg-red-50 text-red-500 px-4 rounded-2xl text-xs font-bold active:scale-95">取消</button></div>`;
-                } else if (a.status === 'accepted') {
-                    db.ref(`private_data/${p.id}/code`).once('value', sc => {
-                        d.innerHTML = `<div class="bg-emerald-500 p-4 rounded-2xl text-white text-center shadow-lg shadow-emerald-100 cursor-pointer active:scale-95 transition" onclick="copy('${sc.val()}')"><p class="text-[9px] font-black opacity-80 mb-1 uppercase tracking-widest">已核准！點擊複製代碼</p><div class="text-2xl font-mono font-black tracking-[0.2em]">${sc.val()}</div></div>`;
-                    });
-                }
-            });
-        }
-
-        function cancelApply(pid) { if(!confirm("取消申請？")) return; db.ref(`applications/${pid}/${auth.currentUser.uid}`).remove(); }
-        function rejectApply(pid, uid) { if(!confirm("拒絕玩家？")) return; db.ref(`applications/${pid}/${uid}`).remove(); }
-        function apply(pid) { 
-            const user = auth.currentUser;
-            db.ref(`users/${user.uid}/gameId`).once('value', s => {
-                const d = s.val();
-                if(!d || !d.code) return showToast("請先設定好友代碼", "❌");
-                db.ref(`applications/${pid}/${user.uid}`).set({ name: d.gameId || user.displayName, code: d.code, status: 'pending' }); 
-            });
-        }
-        function accept(pid, uid, cur, max) {
-            if (cur >= max) return showToast("人數已滿", "⚠️");
-            db.ref().update({ [`applications/${pid}/${uid}/status`]: 'accepted', [`posts/${pid}/current`]: cur + 1 });
-        }
-        function copy(t) { navigator.clipboard.writeText(t).then(() => showToast("已複製", "📋")); }
-    </script>
-</body>
-</html>
+                let posts = Object.keys(r).map(
