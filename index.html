@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 - 代碼顯示版</title>
+    <title>Pikmin 蘑菇組隊站 - 完美修復版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -15,9 +15,49 @@
         @keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .btn-disabled { background-color: #cbd5e1 !important; color: #64748b !important; cursor: not-allowed; pointer-events: none; }
         
-        .filter-btn { @apply relative px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 bg-white border border-slate-200 transition-all; }
-        .filter-active { @apply bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-200; }
-        .badge { @apply absolute -top-1.5 -right-1 bg-red-500 text-white text-[9px] min-w-[16px] h-4 flex items-center justify-center rounded-full border border-white shadow-sm px-1 leading-none font-black z-10; }
+        /* --- 修復後的 CSS (標準寫法，確保紅點顯示) --- */
+        .filter-btn { 
+            position: relative;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b; /* slate-500 */
+            background-color: white;
+            border: 1px solid #e2e8f0; /* slate-200 */
+            transition: all 0.2s;
+            white-space: nowrap;
+            margin-right: 4px;
+        }
+        
+        .filter-active { 
+            background-color: #10b981; /* emerald-500 */
+            color: white !important;
+            border-color: #10b981;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); 
+        }
+
+        /* 紅點樣式：強制定位在右上角 */
+        .badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            font-size: 10px;
+            font-weight: 900;
+            height: 18px;
+            min-width: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            border: 2px solid white;
+            z-index: 20;
+            line-height: 1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            padding: 0 4px; /* 容納多位數 */
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -144,16 +184,16 @@
                         <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">總計: <span id="total-count">...</span></span>
                     </div>
 
-                    <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar px-1">
-                        <button onclick="setFilter('all')" id="tab-all" class="filter-btn filter-active whitespace-nowrap">🌍 全部</button>
-                        <button onclick="setFilter('full')" id="tab-full" class="filter-btn whitespace-nowrap">🈵 已額滿</button>
+                    <div class="flex gap-2 overflow-x-auto pb-2 px-1">
+                        <button onclick="setFilter('all')" id="tab-all" class="filter-btn filter-active">🌍 全部</button>
+                        <button onclick="setFilter('full')" id="tab-full" class="filter-btn">🈵 已額滿</button>
                         
-                        <button onclick="setFilter('my-posts')" id="tab-my-posts" class="filter-btn whitespace-nowrap pr-4">
+                        <button onclick="setFilter('my-posts')" id="tab-my-posts" class="filter-btn">
                             🙋‍♂️ 我的發布
                             <span id="badge-my-posts" class="hidden badge">0</span>
                         </button>
                         
-                        <button onclick="setFilter('my-apps')" id="tab-my-apps" class="filter-btn whitespace-nowrap pr-4">
+                        <button onclick="setFilter('my-apps')" id="tab-my-apps" class="filter-btn">
                             📝 我的報名
                             <span id="badge-my-apps" class="hidden badge">0</span>
                         </button>
@@ -507,10 +547,8 @@ const firebaseConfig = {
                 s.forEach(c => {
                     const a = c.val(); 
                     if(a.status === 'accepted') {
-                        // 【關鍵修改】顯示代碼 (可複製)
                         box.innerHTML += `<div class="flex justify-between items-center bg-emerald-50 p-2 rounded-xl border border-emerald-100"><span class="text-xs font-black text-emerald-700 ml-1">✅ ${a.name} <span class="text-[10px] text-emerald-400 font-mono bg-white px-1.5 rounded ml-1 cursor-pointer hover:bg-emerald-100 transition" onclick="copy('${a.code}')" title="點擊複製">${a.code||'無代碼'}</span></span></div>`;
                     } else {
-                        // 【關鍵修改】顯示代碼 (可複製)
                         box.innerHTML += `<div class="flex justify-between items-center bg-blue-50/50 p-2 rounded-xl border border-blue-100/30"><div class="flex flex-col"><span class="text-xs font-black text-blue-600 ml-1">${a.name}</span><span class="text-[9px] text-slate-400 font-mono ml-1 cursor-pointer hover:text-blue-500 transition" onclick="copy('${a.code}')">${a.code||'無代碼'}</span></div><div class="flex gap-2"><button onclick="rejectApply('${p.id}', '${c.key}')" class="bg-slate-200 text-slate-500 text-[10px] px-3 py-1.5 rounded-lg font-bold">拒絕</button><button onclick="accept('${p.id}','${c.key}',${p.current},${p.max})" class="bg-blue-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold shadow-md shadow-blue-100">接受</button></div></div>`;
                     }
                 });
@@ -537,17 +575,12 @@ const firebaseConfig = {
 
         function cancelApply(pid) { if(!confirm("取消申請？")) return; db.ref(`applications/${pid}/${auth.currentUser.uid}`).remove(); }
         function rejectApply(pid, uid) { if(!confirm("拒絕玩家？")) return; db.ref(`applications/${pid}/${uid}`).remove(); }
-
         function apply(pid) { 
             const user = auth.currentUser;
-            db.ref(`users/${user.uid}`).once('value', s => {
+            db.ref(`users/${user.uid}/gameId`).once('value', s => {
                 const d = s.val();
                 if(!d || !d.code) return showToast("請先設定好友代碼", "❌");
-                db.ref(`applications/${pid}/${user.uid}`).set({ 
-                    name: d.gameId || user.displayName, 
-                    code: d.code,
-                    status: 'pending' 
-                }); 
+                db.ref(`applications/${pid}/${user.uid}`).set({ name: d.gameId || user.displayName, code: d.code, status: 'pending' }); 
             });
         }
         function accept(pid, uid, cur, max) {
