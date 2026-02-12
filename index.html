@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 - 旗艦版</title>
+    <title>Pikmin 蘑菇組隊站 - 動態冷卻版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -14,8 +14,6 @@
         .modal-enter { animation: modalPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
         @keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .btn-disabled { background-color: #cbd5e1 !important; color: #64748b !important; cursor: not-allowed; pointer-events: none; }
-        
-        /* 篩選器樣式 */
         .filter-btn { @apply px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 bg-white border border-slate-200 transition-all; }
         .filter-active { @apply bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-200; }
     </style>
@@ -59,8 +57,17 @@
         </header>
 
         <main class="p-4 space-y-6 flex-grow">
-            <div id="admin-panel" class="hidden bg-slate-800 text-white p-3 rounded-xl text-xs font-bold text-center">
-                👮‍♂️ 管理員模式已啟用
+            <div id="admin-panel" class="hidden bg-slate-800 text-white p-4 rounded-2xl space-y-3 shadow-xl">
+                <div class="text-xs font-bold text-center border-b border-slate-600 pb-2 mb-2">👮‍♂️ 管理員控制台</div>
+                
+                <div class="flex items-center justify-between gap-2">
+                    <label class="text-xs font-bold text-slate-300">全域冷卻時間 (分鐘)</label>
+                    <div class="flex items-center gap-2">
+                        <input id="admin-cd-input" type="number" min="0" class="w-16 bg-slate-700 rounded-lg px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400">
+                        <button onclick="saveCooldownSetting()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition">儲存</button>
+                    </div>
+                </div>
+                <p class="text-[9px] text-slate-400 text-right">當前設定：<span id="current-cd-display" class="text-emerald-400 font-mono">載入中...</span></p>
             </div>
 
             <section id="post-box" class="hidden bg-emerald-50 rounded-[2rem] p-5 border border-emerald-100 space-y-4 shadow-inner">
@@ -119,8 +126,6 @@
                 <button id="btn-post" type="button" onclick="createPost()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 active:scale-95 transition-all">發布看板</button>
             </section>
 
-
-
             <section class="flex flex-col gap-4 pb-10">
                 <div class="flex flex-col gap-3">
                     <div class="flex justify-between items-center px-2 border-l-4 border-emerald-500 ml-1">
@@ -149,6 +154,7 @@
     </div>
 
     <script>
+        // --- 1. 初始化 (請在此填入你的 Firebase Config) ---
 const firebaseConfig = {
   apiKey: "AIzaSyC56QsHKnTuwHFNAwQ2hywBuUviu12wtb4",
   authDomain: "chiangku-240a5.firebaseapp.com",
@@ -163,12 +169,31 @@ const firebaseConfig = {
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // ⚠️ 管理員 UID
+        // ⚠️ 管理員 UID (請填入你的 UID)
         const ADMIN_UID = "a1Nnp6fbNxVtO9rDvknQ1YulZwi1"; 
         
+        let GLOBAL_COOLDOWN_MS = 300000; // 預設 5 分鐘，會從 DB 更新
         let cooldownInterval = null;
-        let globalPosts = []; // 儲存下載的原始資料
-        let currentFilter = 'all'; // 當前篩選模式
+        let globalPosts = []; 
+        let currentFilter = 'all'; 
+
+        // 監聽冷卻時間設定 (所有人都會收到通知)
+        db.ref('settings/cooldown').on('value', s => {
+            const val = s.val();
+            if (val !== null) {
+                GLOBAL_COOLDOWN_MS = parseInt(val);
+                // 更新管理員面板顯示
+                const display = document.getElementById('current-cd-display');
+                if(display) display.innerText = (GLOBAL_COOLDOWN_MS / 60000) + " 分鐘";
+                // 重新檢查按鈕狀態 (如果管理員改短了，按鈕可能可以提早解鎖)
+                const user = auth.currentUser;
+                if(user) {
+                     db.ref(`users/${user.uid}/lastPostTime`).once('value', ls => {
+                        if(ls.val()) startCooldown(ls.val());
+                     });
+                }
+            }
+        });
 
         function genNumOptions(s) {
             let h=''; for(let i=1;i<=30;i++){ h+=`<option value="${i}" ${i==s?'selected':''}>缺 ${i} 人</option>`; } return h;
@@ -219,11 +244,10 @@ const firebaseConfig = {
 
         function startCooldown(lastTime) {
             const btn = document.getElementById('btn-post');
-            const COOLDOWN_MS = 300000;
             if (cooldownInterval) clearInterval(cooldownInterval);
             cooldownInterval = setInterval(() => {
                 const now = Date.now();
-                const remaining = COOLDOWN_MS - (now - lastTime);
+                const remaining = GLOBAL_COOLDOWN_MS - (now - lastTime);
                 if (remaining <= 0) {
                     clearInterval(cooldownInterval);
                     btn.classList.remove('btn-disabled');
@@ -237,7 +261,24 @@ const firebaseConfig = {
                     btn.innerHTML = `冷卻中 (${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')})`;
                 }
             }, 1000);
-            if (Date.now() - lastTime < COOLDOWN_MS) { btn.classList.add('btn-disabled'); btn.disabled = true; btn.innerHTML = "冷卻中..."; }
+            if (Date.now() - lastTime < GLOBAL_COOLDOWN_MS) { 
+                btn.classList.add('btn-disabled'); 
+                btn.disabled = true; 
+                btn.innerHTML = "檢查冷卻中..."; 
+            }
+        }
+
+        // --- 管理員設定功能 ---
+        async function saveCooldownSetting() {
+            const min = document.getElementById('admin-cd-input').value;
+            if (!min || min < 0) return showToast("請輸入有效分鐘數", "❌");
+            try {
+                // 轉換成分秒 (minutes * 60 * 1000)
+                await db.ref('settings/cooldown').set(min * 60000);
+                showToast(`已更新為 ${min} 分鐘`, "✅");
+            } catch (e) {
+                showToast("權限不足", "❌");
+            }
         }
 
         function openSetup(isEdit) {
@@ -294,16 +335,11 @@ const firebaseConfig = {
             const user = auth.currentUser;
             const now = Date.now();
             
-            // 1. 冷卻檢查
             const s = await db.ref(`users/${user.uid}/lastPostTime`).once('value');
-            if (now - (s.val()||0) < 300000) return showToast(`冷卻中...`, "⏳");
+            if (now - (s.val()||0) < GLOBAL_COOLDOWN_MS) return showToast(`冷卻中...`, "⏳");
 
-            // 2. 【關鍵】檢查發文數量限制 (Client端檢查，提升體驗)
-            // 計算目前活著的貼文中，有多少是我的
             const myActivePosts = globalPosts.filter(p => p.uid === user.uid).length;
-            if (myActivePosts >= 10) {
-                return showToast("您的有效發布已達 10 則上限，請先撤回舊文", "🛑");
-            }
+            if (myActivePosts >= 10) return showToast("已達 10 則發布上限", "🛑");
 
             const postKey = db.ref('posts').push().key;
             const data = {
@@ -325,7 +361,7 @@ const firebaseConfig = {
                 showToast("發布成功！", "🚀"); 
                 startCooldown(now);
             } 
-            catch (e) { showToast("發布失敗", "❌"); }
+            catch (e) { showToast("發布失敗，請稍後再試", "❌"); }
         }
 
         async function deletePost(id) {
@@ -335,20 +371,17 @@ const firebaseConfig = {
         }
         async function updateMax(id, val) { await db.ref(`posts/${id}`).update({ max: parseInt(val) }); showToast("已更新", "📝"); }
 
-        // --- 篩選與渲染邏輯 ---
         function setFilter(type) {
             currentFilter = type;
-            // 更新按鈕樣式
             document.querySelectorAll('.filter-btn').forEach(b => {
                 b.classList.remove('filter-active');
                 if(b.id === `tab-${type}`) b.classList.add('filter-active');
             });
-            renderList(); // 重新渲染列表
+            renderList();
         }
 
         function loadData() {
             const me = auth.currentUser.uid;
-            // 只抓取資料，存入 globalPosts
             db.ref('posts').orderByChild('time').limitToLast(50).on('value', snapshot => {
                 const r = snapshot.val();
                 if (!r) { 
@@ -358,12 +391,9 @@ const firebaseConfig = {
                 }
                 let posts = Object.keys(r).map(k => ({ id: k, ...r[k] }));
                 const now = Date.now();
-                // 過濾時間
                 globalPosts = posts.filter(p => p.time > (now - 3600000) && p.time < (now + 300000));
-                // 排序：新到舊
                 globalPosts.sort((a, b) => b.time - a.time);
-                
-                renderList(); // 拿到新資料後渲染
+                renderList();
             });
         }
 
@@ -378,16 +408,12 @@ const firebaseConfig = {
                 return;
             }
 
-            // 根據篩選器過濾資料
             let displayPosts = globalPosts;
             if (currentFilter === 'full') {
                 displayPosts = globalPosts.filter(p => p.current >= p.max);
             } else if (currentFilter === 'my-posts') {
                 displayPosts = globalPosts.filter(p => p.uid === me);
             } 
-            // 注意：'my-apps' (我的報名) 的過濾邏輯比較特殊，
-            // 因為我們需要等 renderGuest 非同步檢查完才知道是否報名。
-            // 這裡採用「CSS 隱藏法」：先全部渲染，然後讓 renderGuest 決定是否顯示。
 
             if (displayPosts.length === 0 && currentFilter !== 'my-apps') {
                  listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">沒有符合的隊伍</div>`;
@@ -399,18 +425,13 @@ const firebaseConfig = {
                 const minAgo = Math.floor((now - post.time) / 60000);
                 const timeStr = minAgo < 1 ? "剛剛" : `${minAgo} 分鐘前`;
                 const isMy = post.uid === me;
-                
-                // 【編號生成】使用時間戳後 5 碼
                 const shortId = post.time.toString().slice(-5);
 
                 const card = document.createElement('div');
-                card.id = `card-${post.id}`; // 給卡片一個 ID 方便操作
+                card.id = `card-${post.id}`;
                 card.className = "w-full block bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3 mush-card";
                 
-                // 如果是「我的報名」模式，預設先隱藏，等確認有報名再顯示
-                if (currentFilter === 'my-apps') {
-                    card.style.display = 'none'; 
-                }
+                if (currentFilter === 'my-apps') card.style.display = 'none'; 
 
                 let adminBtn = "";
                 if (isAdmin && !isMy) {
@@ -442,12 +463,7 @@ const firebaseConfig = {
 
         function renderHost(p) {
             const d = document.getElementById(`ctrl-${p.id}`);
-            // 房主模式：如果在「我的報名」頁籤，即使是我發的文也隱藏（因為不是報名）
-            if (currentFilter === 'my-apps') {
-                 document.getElementById(`card-${p.id}`).remove();
-                 return;
-            }
-
+            if (currentFilter === 'my-apps') { document.getElementById(`card-${p.id}`).remove(); return; }
             d.innerHTML = `<div class="flex gap-2"><select onchange="updateMax('${p.id}',this.value)" class="flex-1 bg-slate-50 text-xs font-bold rounded-xl p-2 border-none">${genNumOptions(p.max)}</select><button onclick="deletePost('${p.id}')" class="bg-red-50 text-red-500 text-xs px-4 py-2 rounded-xl font-bold active:scale-95 transition">撤回</button></div><div id="apps-${p.id}" class="flex flex-col gap-2 mt-2"></div>`;
             db.ref(`applications/${p.id}`).on('value', s => {
                 const box = document.getElementById(`apps-${p.id}`);
@@ -462,19 +478,11 @@ const firebaseConfig = {
         function renderGuest(p, isAdmin) {
             const d = document.getElementById(`ctrl-${p.id}`);
             const me = auth.currentUser.uid;
-            
             db.ref(`applications/${p.id}/${me}`).on('value', s => {
                 const a = s.val();
-                
-                // 【關鍵】我的報名篩選邏輯
                 if (currentFilter === 'my-apps') {
-                    if (a) { // 有申請紀錄
-                        document.getElementById(`card-${p.id}`).style.display = 'block';
-                    } else { // 沒申請
-                        // 保持隱藏 (不需要做動作，因為預設就是 hidden)
-                    }
+                    if (a) document.getElementById(`card-${p.id}`).style.display = 'block';
                 }
-
                 if (!a) {
                     d.innerHTML = p.current >= p.max ? `<button disabled class="w-full bg-slate-50 text-slate-300 py-3 rounded-2xl text-xs font-bold italic">隊伍已額滿</button>` : `<button onclick="apply('${p.id}')" class="w-full bg-emerald-50 text-emerald-600 font-black py-3 rounded-2xl hover:bg-emerald-100 active:scale-95 transition-all text-sm">🙋‍♂️ 申請加入隊伍</button>`;
                 } else if (a.status === 'pending') {
@@ -503,4 +511,3 @@ const firebaseConfig = {
     </script>
 </body>
 </html>
-
