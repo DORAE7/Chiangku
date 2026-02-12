@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 - 流水號版</title>
+    <title>Pikmin 蘑菇組隊站 - 通知版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -14,8 +14,12 @@
         .modal-enter { animation: modalPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
         @keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .btn-disabled { background-color: #cbd5e1 !important; color: #64748b !important; cursor: not-allowed; pointer-events: none; }
-        .filter-btn { @apply px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 bg-white border border-slate-200 transition-all; }
+        
+        .filter-btn { @apply relative px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 bg-white border border-slate-200 transition-all; }
         .filter-active { @apply bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-200; }
+        
+        /* 紅點樣式 */
+        .badge { @apply absolute -top-1 -right-1 bg-red-500 text-white text-[9px] h-4 w-4 flex items-center justify-center rounded-full border border-white shadow-sm; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -57,26 +61,24 @@
         </header>
 
         <main class="p-4 space-y-6 flex-grow">
-            <div id="admin-panel" class="hidden bg-slate-800 text-white p-4 rounded-2xl space-y-4 shadow-xl">
+            <div id="admin-panel" class="hidden bg-slate-800 text-white p-4 rounded-2xl space-y-4 shadow-xl mb-4">
                 <div class="text-xs font-bold text-center border-b border-slate-600 pb-2">👮‍♂️ 管理員控制台</div>
-                
                 <div class="flex items-center justify-between gap-2">
                     <label class="text-xs font-bold text-slate-300">全域冷卻 (分鐘)</label>
                     <div class="flex items-center gap-2">
-                        <input id="admin-cd-input" type="number" min="0" class="w-14 bg-slate-700 rounded-lg px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400">
+                        <input id="admin-cd-input" type="number" min="0" class="w-14 bg-slate-700 rounded-lg px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400 text-white">
                         <button onclick="saveSettings('cooldown')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold transition">儲存</button>
                     </div>
                 </div>
-                <p class="text-[9px] text-slate-400 text-right mb-2">當前：<span id="current-cd-display" class="text-emerald-400 font-mono">--</span></p>
-
+                <p class="text-[9px] text-slate-400 text-right mb-2">當前：<span id="current-cd-display" class="text-emerald-400 font-mono">讀取中...</span></p>
                 <div class="flex items-center justify-between gap-2 border-t border-slate-600 pt-2">
                     <label class="text-xs font-bold text-slate-300">每人發文上限 (筆)</label>
                     <div class="flex items-center gap-2">
-                        <input id="admin-max-input" type="number" min="1" class="w-14 bg-slate-700 rounded-lg px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400">
+                        <input id="admin-max-input" type="number" min="1" class="w-14 bg-slate-700 rounded-lg px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400 text-white">
                         <button onclick="saveSettings('maxPosts')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold transition">儲存</button>
                     </div>
                 </div>
-                <p class="text-[9px] text-slate-400 text-right">當前：<span id="current-max-display" class="text-emerald-400 font-mono">--</span></p>
+                <p class="text-[9px] text-slate-400 text-right">當前：<span id="current-max-display" class="text-emerald-400 font-mono">讀取中...</span></p>
             </div>
 
             <section id="post-box" class="hidden bg-emerald-50 rounded-[2rem] p-5 border border-emerald-100 space-y-4 shadow-inner">
@@ -84,7 +86,6 @@
                     <h2 class="text-xs font-black text-emerald-700 flex items-center gap-1">📢 發起新徵求</h2>
                     <button onclick="openSetup(true)" class="text-[10px] bg-white px-3 py-1 rounded-full text-emerald-600 border border-emerald-200 font-bold hover:bg-emerald-50 transition flex items-center gap-1">✏️ 修改資料</button>
                 </div>
-                
                 <div class="bg-white rounded-2xl p-1 shadow-sm border border-emerald-50">
                     <div class="grid grid-cols-3 gap-2 p-2">
                          <div class="col-span-3">
@@ -97,7 +98,6 @@
                          </div>
                     </div>
                 </div>
-
                 <div class="space-y-2">
                     <select id="m-type" class="w-full bg-white rounded-2xl p-3 text-sm font-bold shadow-sm border-none appearance-none focus:ring-2 focus:ring-emerald-500">
                         <optgroup label="🎨 一般顏色">
@@ -131,7 +131,6 @@
                         <select id="m-max" class="bg-white rounded-2xl p-3 text-sm font-bold shadow-sm border-none appearance-none focus:ring-2 focus:ring-emerald-500"></select>
                     </div>
                 </div>
-                
                 <button id="btn-post" type="button" onclick="createPost()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 active:scale-95 transition-all">發布看板</button>
             </section>
 
@@ -144,14 +143,20 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             </button>
                         </div>
-                        <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">總計: <span id="total-count">0</span></span>
+                        <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">總計: <span id="total-count">...</span></span>
                     </div>
 
                     <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar px-1">
                         <button onclick="setFilter('all')" id="tab-all" class="filter-btn filter-active whitespace-nowrap">🌍 全部</button>
                         <button onclick="setFilter('full')" id="tab-full" class="filter-btn whitespace-nowrap">🈵 已額滿</button>
-                        <button onclick="setFilter('my-posts')" id="tab-my-posts" class="filter-btn whitespace-nowrap">🙋‍♂️ 我的發布</button>
-                        <button onclick="setFilter('my-apps')" id="tab-my-apps" class="filter-btn whitespace-nowrap">📝 我的報名</button>
+                        <button onclick="setFilter('my-posts')" id="tab-my-posts" class="filter-btn whitespace-nowrap">
+                            🙋‍♂️ 我的發布
+                            <span id="badge-my-posts" class="hidden badge">0</span>
+                        </button>
+                        <button onclick="setFilter('my-apps')" id="tab-my-apps" class="filter-btn whitespace-nowrap">
+                            📝 我的報名
+                            <span id="badge-my-apps" class="hidden badge">0</span>
+                        </button>
                     </div>
                 </div>
 
@@ -177,33 +182,30 @@ const firebaseConfig = {
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // ⚠️ 管理員 UID
         const ADMIN_UID = "a1Nnp6fbNxVtO9rDvknQ1YulZwi1"; 
         
-        let GLOBAL_COOLDOWN_MS = 300000; // 預設 5 分鐘
-        let GLOBAL_MAX_POSTS = 10; // 預設 10 筆
+        let GLOBAL_COOLDOWN_MS = 300000;
+        let GLOBAL_MAX_POSTS = 10;
         let cooldownInterval = null;
         let globalPosts = []; 
         let currentFilter = 'all'; 
+        // 儲存監聽器引用以便清除 (防止記憶體洩漏)
+        let activeListeners = [];
 
-        // 監聽所有設定 (冷卻時間 + 發文上限)
         db.ref('settings').on('value', s => {
-            const val = s.val();
-            if (val) {
-                if (val.cooldown) {
-                    GLOBAL_COOLDOWN_MS = parseInt(val.cooldown);
-                    const d = document.getElementById('current-cd-display');
-                    if(d) d.innerText = (GLOBAL_COOLDOWN_MS / 60000) + " 分鐘";
-                    // 重設冷卻檢查
-                    const user = auth.currentUser;
-                    if(user) db.ref(`users/${user.uid}/lastPostTime`).once('value', ls => { if(ls.val()) startCooldown(ls.val()); });
-                }
-                if (val.maxPosts) {
-                    GLOBAL_MAX_POSTS = parseInt(val.maxPosts);
-                    const d = document.getElementById('current-max-display');
-                    if(d) d.innerText = GLOBAL_MAX_POSTS + " 筆";
-                }
-            }
+            const val = s.val() || {};
+            GLOBAL_COOLDOWN_MS = val.cooldown ? parseInt(val.cooldown) : 300000;
+            GLOBAL_MAX_POSTS = val.maxPosts ? parseInt(val.maxPosts) : 10;
+            const cdDisplay = document.getElementById('current-cd-display');
+            const maxDisplay = document.getElementById('current-max-display');
+            if(cdDisplay) cdDisplay.innerText = (GLOBAL_COOLDOWN_MS / 60000) + " 分鐘";
+            if(maxDisplay) maxDisplay.innerText = GLOBAL_MAX_POSTS + " 筆";
+            const cdInput = document.getElementById('admin-cd-input');
+            const maxInput = document.getElementById('admin-max-input');
+            if(cdInput && !cdInput.value) cdInput.value = GLOBAL_COOLDOWN_MS / 60000;
+            if(maxInput && !maxInput.value) maxInput.value = GLOBAL_MAX_POSTS;
+            const user = auth.currentUser;
+            if(user) db.ref(`users/${user.uid}/lastPostTime`).once('value', ls => { if(ls.val()) startCooldown(ls.val()); });
         });
 
         function genNumOptions(s) {
@@ -225,21 +227,14 @@ const firebaseConfig = {
             if (user) {
                 db.ref(`banned_users/${user.uid}`).once('value', s => {
                     if (s.exists()) { alert("已被封鎖"); auth.signOut(); return; }
-                    
                     document.getElementById('login-btn').classList.add('hidden');
                     document.getElementById('user-display').classList.remove('hidden');
                     document.getElementById('u-pic').src = user.photoURL;
-
                     if (user.uid === ADMIN_UID) document.getElementById('admin-panel').classList.remove('hidden');
-                    
                     db.ref(`users/${user.uid}`).once('value', s => { 
                         const d = s.val();
-                        if (!d || !d.code || !d.gameId) {
-                            openSetup(false); 
-                            document.getElementById('setup-game-id').value = "";
-                        } else {
-                            showMainUI(d);
-                        }
+                        if (!d || !d.code || !d.gameId) { openSetup(false); document.getElementById('setup-game-id').value = ""; } 
+                        else { showMainUI(d); }
                         if (d && d.lastPostTime) startCooldown(d.lastPostTime);
                     });
                 });
@@ -272,30 +267,21 @@ const firebaseConfig = {
                     btn.innerHTML = `冷卻中 (${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')})`;
                 }
             }, 1000);
-            if (Date.now() - lastTime < GLOBAL_COOLDOWN_MS) { 
-                btn.classList.add('btn-disabled'); 
-                btn.disabled = true; 
-                btn.innerHTML = "檢查冷卻中..."; 
-            }
+            if (Date.now() - lastTime < GLOBAL_COOLDOWN_MS) { btn.classList.add('btn-disabled'); btn.disabled = true; btn.innerHTML = "檢查冷卻中..."; }
         }
 
-        // --- 管理員設定 ---
         async function saveSettings(type) {
             let val;
             if (type === 'cooldown') {
                 const min = document.getElementById('admin-cd-input').value;
                 if (!min || min < 0) return showToast("無效數值", "❌");
-                val = min * 60000; // 轉毫秒
+                val = min * 60000;
             } else if (type === 'maxPosts') {
                 const num = document.getElementById('admin-max-input').value;
                 if (!num || num < 1) return showToast("無效數值", "❌");
                 val = parseInt(num);
             }
-            
-            try {
-                await db.ref(`settings/${type}`).set(val);
-                showToast("設定已更新", "✅");
-            } catch (e) { showToast("權限不足", "❌"); }
+            try { await db.ref(`settings/${type}`).set(val); showToast("設定已更新", "✅"); } catch (e) { showToast("權限不足", "❌"); }
         }
 
         function openSetup(isEdit) {
@@ -351,11 +337,8 @@ const firebaseConfig = {
         async function createPost() {
             const user = auth.currentUser;
             const now = Date.now();
-            
             const s = await db.ref(`users/${user.uid}/lastPostTime`).once('value');
             if (now - (s.val()||0) < GLOBAL_COOLDOWN_MS) return showToast(`冷卻中...`, "⏳");
-
-            // 檢查發文上限 (使用動態設定的 GLOBAL_MAX_POSTS)
             const myActivePosts = globalPosts.filter(p => p.uid === user.uid).length;
             if (myActivePosts >= GLOBAL_MAX_POSTS) return showToast(`發文上限為 ${GLOBAL_MAX_POSTS} 筆`, "🛑");
 
@@ -373,12 +356,7 @@ const firebaseConfig = {
             up[`/posts/${postKey}`] = data;
             up[`/private_data/${postKey}`] = { code: document.getElementById('m-code').value };
             up[`/users/${user.uid}/lastPostTime`] = now;
-            
-            try { 
-                await db.ref().update(up); 
-                showToast("發布成功！", "🚀"); 
-                startCooldown(now);
-            } 
+            try { await db.ref().update(up); showToast("發布成功！", "🚀"); startCooldown(now); } 
             catch (e) { showToast("發布失敗，請稍後再試", "❌"); }
         }
 
@@ -402,31 +380,60 @@ const firebaseConfig = {
             const me = auth.currentUser.uid;
             db.ref('posts').orderByChild('time').limitToLast(50).on('value', snapshot => {
                 const r = snapshot.val();
-                if (!r) { 
-                    globalPosts = [];
-                    renderList();
-                    return; 
-                }
-                
-                // 1. 轉陣列
+                if (!r) { globalPosts = []; document.getElementById('total-count').innerText = 0; renderList(); return; }
                 let posts = Object.keys(r).map(k => ({ id: k, ...r[k] }));
-                
-                // 2. 過濾時間
                 const now = Date.now();
                 posts = posts.filter(p => p.time > (now - 3600000) && p.time < (now + 300000));
-                
-                // 3. 【關鍵】生成流水號 (先由舊到新排序，確保 No.1 是最舊的)
                 posts.sort((a, b) => a.time - b.time);
-                posts = posts.map((p, index) => ({ ...p, serialNumber: index + 1 })); // 加入序號
-
-                // 4. 顯示排序 (新到舊，把最新的放上面)
+                posts = posts.map((p, index) => ({ ...p, serialNumber: index + 1 }));
                 globalPosts = posts.reverse(); 
-                
-                // 5. 更新總數顯示
                 document.getElementById('total-count').innerText = globalPosts.length;
-
+                
+                checkBadges(me); // 檢查紅點通知
                 renderList();
             });
+        }
+
+        // --- 核心：檢查紅點通知 ---
+        function checkBadges(me) {
+            // 清除舊監聽，避免重複 (簡易優化：只在列表刷新時重置)
+            activeListeners.forEach(l => l.ref.off('value', l.cb));
+            activeListeners = [];
+
+            let myPostsBadge = 0;
+            let myAppsBadge = 0;
+            const btnMyPosts = document.getElementById('badge-my-posts');
+            const btnMyApps = document.getElementById('badge-my-apps');
+
+            globalPosts.forEach(post => {
+                const ref = db.ref(`applications/${post.id}`);
+                const cb = ref.on('value', s => {
+                    const apps = s.val();
+                    if (!apps) return;
+                    
+                    // 1. 檢查「我的發布」通知 (我是房主，有人 pending)
+                    if (post.uid === me) {
+                        let pendingCount = 0;
+                        Object.values(apps).forEach(a => { if(a.status === 'pending') pendingCount++; });
+                        if (pendingCount > 0) {
+                            // 這裡只做簡單的標示，不累加跨貼文的數量以免邏輯過於複雜
+                            btnMyPosts.innerText = "!";
+                            btnMyPosts.classList.remove('hidden');
+                        }
+                    }
+
+                    // 2. 檢查「我的報名」通知 (我是申請者，狀態 accepted)
+                    if (apps[me] && apps[me].status === 'accepted') {
+                        btnMyApps.innerText = "!"; 
+                        btnMyApps.classList.remove('hidden');
+                    }
+                });
+                activeListeners.push({ ref: ref, cb: cb });
+            });
+            
+            // 如果沒有通知，隱藏 (這裡只是初始化，實際由上方 callback 控制顯示)
+            btnMyPosts.classList.add('hidden');
+            btnMyApps.classList.add('hidden');
         }
 
         function renderList() {
@@ -435,39 +442,26 @@ const firebaseConfig = {
             const me = auth.currentUser.uid;
             const isAdmin = (me === ADMIN_UID);
 
-            if (globalPosts.length === 0) {
-                listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">暫無資料</div>`;
-                return;
-            }
+            if (globalPosts.length === 0) { listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">暫無資料</div>`; return; }
 
             let displayPosts = globalPosts;
-            if (currentFilter === 'full') {
-                displayPosts = globalPosts.filter(p => p.current >= p.max);
-            } else if (currentFilter === 'my-posts') {
-                displayPosts = globalPosts.filter(p => p.uid === me);
-            } 
+            if (currentFilter === 'full') displayPosts = globalPosts.filter(p => p.current >= p.max);
+            else if (currentFilter === 'my-posts') displayPosts = globalPosts.filter(p => p.uid === me);
 
-            if (displayPosts.length === 0 && currentFilter !== 'my-apps') {
-                 listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">沒有符合的隊伍</div>`;
-                 return;
-            }
+            if (displayPosts.length === 0 && currentFilter !== 'my-apps') { listDiv.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">沒有符合的隊伍</div>`; return; }
 
             displayPosts.forEach(post => {
                 const now = Date.now();
                 const minAgo = Math.floor((now - post.time) / 60000);
                 const timeStr = minAgo < 1 ? "剛剛" : `${minAgo} 分鐘前`;
                 const isMy = post.uid === me;
-                
                 const card = document.createElement('div');
                 card.id = `card-${post.id}`;
                 card.className = "w-full block bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3 mush-card";
-                
                 if (currentFilter === 'my-apps') card.style.display = 'none'; 
 
                 let adminBtn = "";
-                if (isAdmin && !isMy) {
-                    adminBtn = `<div class="flex gap-2 mb-2 justify-end border-b border-slate-50 pb-2"><button onclick="banUser('${post.uid}', '${post.name}')" class="text-[9px] bg-slate-800 text-white px-2 py-1 rounded">🚫 封鎖</button><button onclick="adminDeletePost('${post.id}')" class="text-[9px] bg-red-600 text-white px-2 py-1 rounded">🗑️ 刪文</button></div>`;
-                }
+                if (isAdmin && !isMy) adminBtn = `<div class="flex gap-2 mb-2 justify-end border-b border-slate-50 pb-2"><button onclick="banUser('${post.uid}', '${post.name}')" class="text-[9px] bg-slate-800 text-white px-2 py-1 rounded">🚫 封鎖</button><button onclick="adminDeletePost('${post.id}')" class="text-[9px] bg-red-600 text-white px-2 py-1 rounded">🗑️ 刪文</button></div>`;
 
                 card.innerHTML = `
                     ${adminBtn}
@@ -500,8 +494,13 @@ const firebaseConfig = {
                 const box = document.getElementById(`apps-${p.id}`);
                 if(!box) return; box.innerHTML = "";
                 s.forEach(c => {
-                    const a = c.val(); if(a.status === 'accepted') return;
-                    box.innerHTML += `<div class="flex justify-between items-center bg-blue-50/50 p-2 rounded-xl border border-blue-100/30"><span class="text-xs font-black text-blue-600 ml-1">${a.name} 申請</span><div class="flex gap-2"><button onclick="rejectApply('${p.id}', '${c.key}')" class="bg-slate-200 text-slate-500 text-[10px] px-3 py-1.5 rounded-lg font-bold">拒絕</button><button onclick="accept('${p.id}','${c.key}',${p.current},${p.max})" class="bg-blue-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold shadow-md shadow-blue-100">接受</button></div></div>`;
+                    const a = c.val(); 
+                    // 【關鍵修改】已核准的顯示為綠色列表，不隱藏
+                    if(a.status === 'accepted') {
+                        box.innerHTML += `<div class="flex justify-between items-center bg-emerald-50 p-2 rounded-xl border border-emerald-100"><span class="text-xs font-black text-emerald-700 ml-1">✅ ${a.name} (已加入)</span></div>`;
+                    } else {
+                        box.innerHTML += `<div class="flex justify-between items-center bg-blue-50/50 p-2 rounded-xl border border-blue-100/30"><span class="text-xs font-black text-blue-600 ml-1">${a.name} 申請</span><div class="flex gap-2"><button onclick="rejectApply('${p.id}', '${c.key}')" class="bg-slate-200 text-slate-500 text-[10px] px-3 py-1.5 rounded-lg font-bold">拒絕</button><button onclick="accept('${p.id}','${c.key}',${p.current},${p.max})" class="bg-blue-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold shadow-md shadow-blue-100">接受</button></div></div>`;
+                    }
                 });
             });
         }
@@ -511,9 +510,7 @@ const firebaseConfig = {
             const me = auth.currentUser.uid;
             db.ref(`applications/${p.id}/${me}`).on('value', s => {
                 const a = s.val();
-                if (currentFilter === 'my-apps') {
-                    if (a) document.getElementById(`card-${p.id}`).style.display = 'block';
-                }
+                if (currentFilter === 'my-apps') { if (a) document.getElementById(`card-${p.id}`).style.display = 'block'; }
                 if (!a) {
                     d.innerHTML = p.current >= p.max ? `<button disabled class="w-full bg-slate-50 text-slate-300 py-3 rounded-2xl text-xs font-bold italic">隊伍已額滿</button>` : `<button onclick="apply('${p.id}')" class="w-full bg-emerald-50 text-emerald-600 font-black py-3 rounded-2xl hover:bg-emerald-100 active:scale-95 transition-all text-sm">🙋‍♂️ 申請加入隊伍</button>`;
                 } else if (a.status === 'pending') {
