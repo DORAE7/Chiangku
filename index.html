@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pikmin 蘑菇組隊站 - 動態冷卻版</title>
+    <title>Pikmin 蘑菇組隊站 - 流水號版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
@@ -57,17 +57,26 @@
         </header>
 
         <main class="p-4 space-y-6 flex-grow">
-            <div id="admin-panel" class="hidden bg-slate-800 text-white p-4 rounded-2xl space-y-3 shadow-xl">
-                <div class="text-xs font-bold text-center border-b border-slate-600 pb-2 mb-2">👮‍♂️ 管理員控制台</div>
+            <div id="admin-panel" class="hidden bg-slate-800 text-white p-4 rounded-2xl space-y-4 shadow-xl">
+                <div class="text-xs font-bold text-center border-b border-slate-600 pb-2">👮‍♂️ 管理員控制台</div>
                 
                 <div class="flex items-center justify-between gap-2">
-                    <label class="text-xs font-bold text-slate-300">全域冷卻時間 (分鐘)</label>
+                    <label class="text-xs font-bold text-slate-300">全域冷卻 (分鐘)</label>
                     <div class="flex items-center gap-2">
-                        <input id="admin-cd-input" type="number" min="0" class="w-16 bg-slate-700 rounded-lg px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400">
-                        <button onclick="saveCooldownSetting()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition">儲存</button>
+                        <input id="admin-cd-input" type="number" min="0" class="w-14 bg-slate-700 rounded-lg px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400">
+                        <button onclick="saveSettings('cooldown')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold transition">儲存</button>
                     </div>
                 </div>
-                <p class="text-[9px] text-slate-400 text-right">當前設定：<span id="current-cd-display" class="text-emerald-400 font-mono">載入中...</span></p>
+                <p class="text-[9px] text-slate-400 text-right mb-2">當前：<span id="current-cd-display" class="text-emerald-400 font-mono">--</span></p>
+
+                <div class="flex items-center justify-between gap-2 border-t border-slate-600 pt-2">
+                    <label class="text-xs font-bold text-slate-300">每人發文上限 (筆)</label>
+                    <div class="flex items-center gap-2">
+                        <input id="admin-max-input" type="number" min="1" class="w-14 bg-slate-700 rounded-lg px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-1 focus:ring-emerald-400">
+                        <button onclick="saveSettings('maxPosts')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold transition">儲存</button>
+                    </div>
+                </div>
+                <p class="text-[9px] text-slate-400 text-right">當前：<span id="current-max-display" class="text-emerald-400 font-mono">--</span></p>
             </div>
 
             <section id="post-box" class="hidden bg-emerald-50 rounded-[2rem] p-5 border border-emerald-100 space-y-4 shadow-inner">
@@ -135,7 +144,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             </button>
                         </div>
-                        <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">LIVE</span>
+                        <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded font-bold">總計: <span id="total-count">0</span></span>
                     </div>
 
                     <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar px-1">
@@ -154,7 +163,6 @@
     </div>
 
     <script>
-        // --- 1. 初始化 (請在此填入你的 Firebase Config) ---
 const firebaseConfig = {
   apiKey: "AIzaSyC56QsHKnTuwHFNAwQ2hywBuUviu12wtb4",
   authDomain: "chiangku-240a5.firebaseapp.com",
@@ -169,28 +177,31 @@ const firebaseConfig = {
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // ⚠️ 管理員 UID (請填入你的 UID)
+        // ⚠️ 管理員 UID
         const ADMIN_UID = "a1Nnp6fbNxVtO9rDvknQ1YulZwi1"; 
         
-        let GLOBAL_COOLDOWN_MS = 300000; // 預設 5 分鐘，會從 DB 更新
+        let GLOBAL_COOLDOWN_MS = 300000; // 預設 5 分鐘
+        let GLOBAL_MAX_POSTS = 10; // 預設 10 筆
         let cooldownInterval = null;
         let globalPosts = []; 
         let currentFilter = 'all'; 
 
-        // 監聽冷卻時間設定 (所有人都會收到通知)
-        db.ref('settings/cooldown').on('value', s => {
+        // 監聽所有設定 (冷卻時間 + 發文上限)
+        db.ref('settings').on('value', s => {
             const val = s.val();
-            if (val !== null) {
-                GLOBAL_COOLDOWN_MS = parseInt(val);
-                // 更新管理員面板顯示
-                const display = document.getElementById('current-cd-display');
-                if(display) display.innerText = (GLOBAL_COOLDOWN_MS / 60000) + " 分鐘";
-                // 重新檢查按鈕狀態 (如果管理員改短了，按鈕可能可以提早解鎖)
-                const user = auth.currentUser;
-                if(user) {
-                     db.ref(`users/${user.uid}/lastPostTime`).once('value', ls => {
-                        if(ls.val()) startCooldown(ls.val());
-                     });
+            if (val) {
+                if (val.cooldown) {
+                    GLOBAL_COOLDOWN_MS = parseInt(val.cooldown);
+                    const d = document.getElementById('current-cd-display');
+                    if(d) d.innerText = (GLOBAL_COOLDOWN_MS / 60000) + " 分鐘";
+                    // 重設冷卻檢查
+                    const user = auth.currentUser;
+                    if(user) db.ref(`users/${user.uid}/lastPostTime`).once('value', ls => { if(ls.val()) startCooldown(ls.val()); });
+                }
+                if (val.maxPosts) {
+                    GLOBAL_MAX_POSTS = parseInt(val.maxPosts);
+                    const d = document.getElementById('current-max-display');
+                    if(d) d.innerText = GLOBAL_MAX_POSTS + " 筆";
                 }
             }
         });
@@ -268,17 +279,23 @@ const firebaseConfig = {
             }
         }
 
-        // --- 管理員設定功能 ---
-        async function saveCooldownSetting() {
-            const min = document.getElementById('admin-cd-input').value;
-            if (!min || min < 0) return showToast("請輸入有效分鐘數", "❌");
-            try {
-                // 轉換成分秒 (minutes * 60 * 1000)
-                await db.ref('settings/cooldown').set(min * 60000);
-                showToast(`已更新為 ${min} 分鐘`, "✅");
-            } catch (e) {
-                showToast("權限不足", "❌");
+        // --- 管理員設定 ---
+        async function saveSettings(type) {
+            let val;
+            if (type === 'cooldown') {
+                const min = document.getElementById('admin-cd-input').value;
+                if (!min || min < 0) return showToast("無效數值", "❌");
+                val = min * 60000; // 轉毫秒
+            } else if (type === 'maxPosts') {
+                const num = document.getElementById('admin-max-input').value;
+                if (!num || num < 1) return showToast("無效數值", "❌");
+                val = parseInt(num);
             }
+            
+            try {
+                await db.ref(`settings/${type}`).set(val);
+                showToast("設定已更新", "✅");
+            } catch (e) { showToast("權限不足", "❌"); }
         }
 
         function openSetup(isEdit) {
@@ -338,8 +355,9 @@ const firebaseConfig = {
             const s = await db.ref(`users/${user.uid}/lastPostTime`).once('value');
             if (now - (s.val()||0) < GLOBAL_COOLDOWN_MS) return showToast(`冷卻中...`, "⏳");
 
+            // 檢查發文上限 (使用動態設定的 GLOBAL_MAX_POSTS)
             const myActivePosts = globalPosts.filter(p => p.uid === user.uid).length;
-            if (myActivePosts >= 10) return showToast("已達 10 則發布上限", "🛑");
+            if (myActivePosts >= GLOBAL_MAX_POSTS) return showToast(`發文上限為 ${GLOBAL_MAX_POSTS} 筆`, "🛑");
 
             const postKey = db.ref('posts').push().key;
             const data = {
@@ -389,10 +407,24 @@ const firebaseConfig = {
                     renderList();
                     return; 
                 }
+                
+                // 1. 轉陣列
                 let posts = Object.keys(r).map(k => ({ id: k, ...r[k] }));
+                
+                // 2. 過濾時間
                 const now = Date.now();
-                globalPosts = posts.filter(p => p.time > (now - 3600000) && p.time < (now + 300000));
-                globalPosts.sort((a, b) => b.time - a.time);
+                posts = posts.filter(p => p.time > (now - 3600000) && p.time < (now + 300000));
+                
+                // 3. 【關鍵】生成流水號 (先由舊到新排序，確保 No.1 是最舊的)
+                posts.sort((a, b) => a.time - b.time);
+                posts = posts.map((p, index) => ({ ...p, serialNumber: index + 1 })); // 加入序號
+
+                // 4. 顯示排序 (新到舊，把最新的放上面)
+                globalPosts = posts.reverse(); 
+                
+                // 5. 更新總數顯示
+                document.getElementById('total-count').innerText = globalPosts.length;
+
                 renderList();
             });
         }
@@ -425,8 +457,7 @@ const firebaseConfig = {
                 const minAgo = Math.floor((now - post.time) / 60000);
                 const timeStr = minAgo < 1 ? "剛剛" : `${minAgo} 分鐘前`;
                 const isMy = post.uid === me;
-                const shortId = post.time.toString().slice(-5);
-
+                
                 const card = document.createElement('div');
                 card.id = `card-${post.id}`;
                 card.className = "w-full block bg-white rounded-[2rem] p-5 border border-slate-100 shadow-sm flex flex-col gap-3 mush-card";
@@ -443,7 +474,7 @@ const firebaseConfig = {
                     <div class="flex justify-between items-start">
                         <div class="flex flex-col gap-1 text-left">
                             <div class="flex flex-wrap gap-1 items-center">
-                                <span class="text-[9px] font-mono text-slate-300 font-bold">#${shortId}</span>
+                                <span class="text-[10px] font-black text-white bg-slate-400 px-1.5 rounded">No.${post.serialNumber}</span>
                                 <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-md font-bold">${post.mushSize||'一般'}</span>
                                 <span class="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-md font-black">${post.mushType||'未知'}</span>
                             </div>
